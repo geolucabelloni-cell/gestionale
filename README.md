@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gestionale Studio
 
-## Getting Started
+Gestionale web per studi di diritto dell'immigrazione organizzati in rete di franchising.
+Sostituisce le funzioni usate del gestionale TeamSystem e aggiunge l'integrazione con
+WhatsApp e con l'intelligenza artificiale (Claude di Anthropic).
 
-First, run the development server:
+## Cosa fa
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+| Area | Funzioni |
+|---|---|
+| **Anagrafiche** | Dati personali, contatti, lingua preferita, passaporto e permesso di soggiorno con scadenze, consenso privacy, etichette, ricerca veloce. **Compila da documento**: carichi la foto del passaporto/permesso e l'AI riempie i campi. |
+| **Diario del cliente** | Una nota per ogni visita, numerata in ordine progressivo (n. 1, 2, 3…), raggruppata per giorno, con autore e ora. Le note non si modificano: si aggiunge una *rettifica* (storico affidabile). |
+| **Archivio documenti** | Cartelle e sottocartelle illimitate per cliente (7 cartelle predefinite alla creazione). Caricamento multiplo, anteprima, download, sposta, rinomina. L'AI riconosce il documento, scrive un riepilogo (con eventuale scadenza) e lo archivia nella cartella giusta. |
+| **Pratiche** | Rinnovi, ricongiungimenti, cittadinanza, flussi, ricorsi… con stato, riferimento Questura/Prefettura e prossima scadenza. |
+| **WhatsApp + AI** | I messaggi arrivano nel gestionale e si collegano al cliente dal numero. L'AI legge anagrafica, diario e pratiche e **risponde da sola alle domande semplici** (orari, documenti da portare, stato pratica, conferme), nella lingua del cliente. Consulenze legali, urgenze (espulsioni, scadenze) e casi dubbi vanno a un operatore con **bozza di risposta già pronta** e un messaggio di cortesia al cliente. Foto e documenti inviati su WhatsApp vengono archiviati e classificati in automatico. Più messaggi di fila ricevono una sola risposta. |
+| **Assistente AI sul cliente** | "Riepiloga la storia del cliente" prima dell'appuntamento e domande libere ("quali documenti mancano?"). |
+| **Scadenze** | Permessi, passaporti e pratiche in scadenza a 30/60/90/180 giorni. |
+| **Franchising** | Ogni sede vede solo i propri dati (isolamento nel database). La sede centrale vede tutto, apre nuove sedi con il titolare in un minuto e ha la dashboard della rete. Ruoli: *Sede centrale*, *Titolare sede*, *Operatore*. Registro attività per GDPR. |
+
+## Architettura
+
+- **Next.js 16** (interfaccia web e API), utilizzabile da PC, tablet e telefono.
+- **Supabase**: database PostgreSQL, login utenti, archivio file. Regione UE (Francoforte) per il GDPR.
+  La separazione tra sedi è garantita dal database (Row Level Security), non solo dall'interfaccia.
+- **Claude (Anthropic)** per l'AI — modello configurabile con `AI_MODEL`.
+- **WhatsApp Business Cloud API** ufficiale di Meta (nessun rischio di blocco del numero).
+
+```
+src/
+  app/(app)/          pagine del gestionale (dashboard, clienti, whatsapp, scadenze, impostazioni, rete)
+  app/api/whatsapp/   webhook che riceve i messaggi da Meta
+  lib/ai/claude.ts    tutte le funzioni AI (risposte WhatsApp, riepiloghi, lettura documenti)
+  lib/whatsapp*.ts    invio/ricezione WhatsApp e logica di risposta automatica
+supabase/migrations/  schema del database, sicurezza e archivio file
+scripts/crea-admin.mjs  crea il primo utente della sede centrale
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Messa online (circa 1 ora)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. Supabase
+1. Crea un progetto su [supabase.com](https://supabase.com) scegliendo la regione **Central EU (Frankfurt)**.
+2. Installa le dipendenze e collega il progetto:
+   ```bash
+   npm install
+   npx supabase login
+   npx supabase link --project-ref <ID-progetto>
+   npx supabase db push
+   ```
+3. In *Authentication → Providers → Email* disattiva "Allow new users to sign up" (gli utenti li crea la sede centrale).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Hosting (Vercel)
+1. Importa il repository su [vercel.com](https://vercel.com), regione funzioni **Frankfurt (fra1)**.
+2. Inserisci le variabili d'ambiente elencate in `.env.example`.
+3. Crea il primo amministratore (dal tuo PC, con un file `.env.local` che contiene URL e service role key):
+   ```bash
+   node --env-file=.env.local scripts/crea-admin.mjs tua@email.it "PasswordSicura!" "Nome Cognome" "Sede centrale"
+   ```
 
-## Learn More
+### 3. AI
+Crea una chiave su [console.anthropic.com](https://console.anthropic.com) e impostala in `ANTHROPIC_API_KEY`.
+Senza chiave il gestionale funziona lo stesso: le funzioni AI vengono nascoste e i messaggi WhatsApp vanno tutti agli operatori.
 
-To learn more about Next.js, take a look at the following resources:
+### 4. WhatsApp Business
+1. Su [developers.facebook.com](https://developers.facebook.com) crea un'app di tipo *Business* e aggiungi il prodotto **WhatsApp**.
+2. Registra il numero della sede (il numero non deve essere in uso sull'app WhatsApp normale).
+3. Crea un *System User* nel Business Manager con un token permanente (permessi `whatsapp_business_messaging`, `whatsapp_business_management`) → `WHATSAPP_ACCESS_TOKEN`.
+4. *WhatsApp → Configuration → Webhook*: URL `https://<dominio>/api/whatsapp/webhook`, token di verifica = `WHATSAPP_VERIFY_TOKEN`, sottoscrivi il campo **messages**.
+5. Copia l'*App Secret* (Impostazioni app → Di base) in `WHATSAPP_APP_SECRET`.
+6. Nel gestionale, *Impostazioni sede*: inserisci il **Phone Number ID** e compila le **Informazioni per l'AI** (orari, indirizzo, documenti richiesti…). L'AI risponde solo con quello che è scritto lì.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Ogni sede in franchising può avere il proprio numero WhatsApp: basta inserire il suo Phone Number ID (e, se è su un altro Business Manager, il suo token) nelle impostazioni della sede.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> Regola di Meta: si può scrivere liberamente al cliente solo entro 24 ore dal suo ultimo messaggio. Oltre servono messaggi *modello* approvati (vedi Sviluppi futuri).
 
-## Deploy on Vercel
+## Sviluppo in locale
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npx supabase start          # richiede Docker
+cp .env.example .env.local  # inserisci URL e chiavi stampate da "supabase start"
+node --env-file=.env.local scripts/crea-admin.mjs admin@test.it "Password123!" "Admin" "Sede centrale"
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Costi indicativi
+
+| Voce | Costo |
+|---|---|
+| Supabase Pro (database, file, login) | ~25 $/mese per tutta la rete |
+| Vercel Pro | ~20 $/mese |
+| AI (Claude) | a consumo: pochi centesimi per messaggio/documento analizzato |
+| WhatsApp | le risposte entro 24 h al messaggio del cliente sono gratuite; i messaggi modello si pagano a conversazione |
+
+## Sviluppi futuri consigliati
+- **Promemoria automatici** WhatsApp per permessi in scadenza (richiede template approvati da Meta).
+- **Agenda appuntamenti** con prenotazione via WhatsApp.
+- **Importazione dati da TeamSystem** (esportazione CSV di anagrafiche e note → script di import).
+- **Trascrizione dei messaggi vocali** WhatsApp.
+- Fatturazione/incassi e firma elettronica dei mandati.

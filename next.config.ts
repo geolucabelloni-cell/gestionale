@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
   turbopack: {
     rules: {
       "*.css": {
@@ -11,6 +8,14 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
+  },
+  experimental: {
+    serverActions: {
+      // per "Compila da documento" (foto/PDF di passaporto o permesso)
+      bodySizeLimit: "12mb",
+    },
+    // il proxy (controllo login) bufferizza il body: deve accettare lo stesso limite
+    proxyClientMaxBodySize: "15mb",
   },
 };
 
