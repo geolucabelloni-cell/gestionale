@@ -1,8 +1,12 @@
 "use client";
 
 import { useActionState, useRef, useState, useTransition } from "react";
-import { MessageCircle, Sparkles, Trash2, CornerDownRight } from "lucide-react";
+import { inviaSenzaReset } from "@/lib/form";
+import { MessageCircle, Sparkles, Trash2, CornerDownRight, ListTodo } from "lucide-react";
 import { aggiungiNota, eliminaNota } from "@/app/(app)/clienti/actions";
+import { aiSuggerisciDaNota } from "@/app/(app)/agente/actions";
+import { Suggerimenti } from "@/components/agente/suggerimenti";
+import type { AttivitaEstratte } from "@/lib/ai/claude";
 import { dataLunga, ora } from "@/lib/format";
 
 type Nota = {
@@ -16,15 +20,28 @@ type Nota = {
   autore: string | null;
 };
 
-export function Diario({ clientId, note, puoEliminare }: { clientId: string; note: Nota[]; puoEliminare: boolean }) {
+export function Diario({ clientId, note, puoEliminare, aiAttiva }: { clientId: string; note: Nota[]; puoEliminare: boolean; aiAttiva: boolean }) {
   const [rettifica, setRettifica] = useState<Nota | null>(null);
   const [, avvia] = useTransition();
+  const [suggerimenti, setSuggerimenti] = useState<AttivitaEstratte | null>(null);
+  const [statoAi, setStatoAi] = useState<string | null>(null);
+  const analizza = async (noteId: string) => {
+    setSuggerimenti(null);
+    setStatoAi("L'AI sta cercando attività e appuntamenti nella nota…");
+    const r = await aiSuggerisciDaNota(noteId);
+    if (r.errore) return setStatoAi(r.errore);
+    const n = (r.suggerimenti?.attivita.length ?? 0) + (r.suggerimenti?.appuntamenti.length ?? 0);
+    setStatoAi(n ? null : "Nessuna attività da aggiungere trovata nella nota.");
+    if (n) setSuggerimenti(r.suggerimenti!);
+  };
   const formRef = useRef<HTMLFormElement>(null);
   const [stato, azione, salvataggio] = useActionState(async (prec: Awaited<ReturnType<typeof aggiungiNota>>, fd: FormData) => {
     const r = await aggiungiNota(prec, fd);
     if (r?.ok) {
       formRef.current?.reset();
       setRettifica(null);
+      // l'agente AI legge la nota appena scritta e propone attività/appuntamenti
+      if (aiAttiva && r.id) void analizza(r.id);
     }
     return r;
   }, null);
@@ -37,7 +54,7 @@ export function Diario({ clientId, note, puoEliminare }: { clientId: string; not
 
   return (
     <div className="space-y-6">
-      <form ref={formRef} action={azione} className="card space-y-3 p-4">
+      <form ref={formRef} onSubmit={inviaSenzaReset(azione)} className="card space-y-3 p-4">
         <input type="hidden" name="client_id" value={clientId} />
         {rettifica && <input type="hidden" name="rettifica_di" value={rettifica.id} />}
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -69,6 +86,19 @@ export function Diario({ clientId, note, puoEliminare }: { clientId: string; not
         </div>
       </form>
 
+      {statoAi && <p className="animate-pulse text-sm text-violet-700">{statoAi}</p>}
+      {suggerimenti && (
+        <Suggerimenti
+          suggerimenti={suggerimenti}
+          clientId={clientId}
+          origine="ai"
+          onFatto={(msg) => {
+            setSuggerimenti(null);
+            setStatoAi(msg || null);
+          }}
+        />
+      )}
+
       {note.length === 0 && <p className="py-8 text-center text-slate-500">Nessuna nota nel diario.</p>}
 
       {[...giorni.entries()].map(([giorno, lista]) => (
@@ -89,6 +119,7 @@ export function Diario({ clientId, note, puoEliminare }: { clientId: string; not
                       <Sparkles size={12} className="mr-1" /> AI
                     </span>
                   )}
+                  {n.origine === "sistema" && <span className="badge bg-slate-100 text-slate-600">Importata da TeamSystem</span>}
                   {n.rettifica_di && (
                     <span className="inline-flex items-center gap-1 text-amber-600">
                       <CornerDownRight size={12} /> rettifica la nota n. {perNumero.get(n.rettifica_di) ?? "?"}
@@ -98,6 +129,11 @@ export function Diario({ clientId, note, puoEliminare }: { clientId: string; not
                     {n.autore ?? "Sistema"} · ore {ora(n.created_at)}
                   </span>
                   <span className="flex-1" />
+                  {aiAttiva && (
+                    <button className="inline-flex items-center gap-0.5 hover:text-violet-600" onClick={() => void analizza(n.id)} title="Estrai attività e appuntamenti con l'AI">
+                      <ListTodo size={13} /> Attività
+                    </button>
+                  )}
                   <button className="hover:text-brand-600" onClick={() => setRettifica(n)} title="Aggiungi una rettifica">
                     Rettifica
                   </button>

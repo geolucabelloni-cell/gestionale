@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
+import { inviaSenzaReset } from "@/lib/form";
 import { creaUtente, impostaAttivo, reimpostaPassword, salvaSede } from "./actions";
 import { ETICHETTE_RUOLO_CLIENT } from "./etichette";
 import type { Database } from "@/lib/database.types";
@@ -16,10 +17,27 @@ TARIFFE (solo se volete che l'AI le comunichi): ...
 LINGUE PARLATE IN SEDE: italiano, inglese, francese, arabo
 NOTE: non diamo consulenze legali via WhatsApp: per valutare il caso serve un appuntamento.`;
 
-export function FormSede({ sede, haToken, haTokenGlobale, aiAttiva, webhookUrl }: { sede: Sede; haToken: boolean; haTokenGlobale: boolean; aiAttiva: boolean; webhookUrl: string }) {
+export function FormSede({
+  sede,
+  haToken,
+  haTokenGlobale,
+  aiAttiva,
+  webhookUrl,
+  haTokenCallbell,
+  webhookCallbell,
+}: {
+  sede: Sede;
+  haToken: boolean;
+  haTokenGlobale: boolean;
+  aiAttiva: boolean;
+  webhookUrl: string;
+  haTokenCallbell: boolean;
+  webhookCallbell: string | null;
+}) {
   const [stato, azione, salvataggio] = useActionState(salvaSede, null);
+  const [provider, setProvider] = useState(sede.wa_provider);
   return (
-    <form action={azione} className="space-y-6">
+    <form onSubmit={inviaSenzaReset(azione)} className="space-y-6">
       <input type="hidden" name="id" value={sede.id} />
       <section className="card grid gap-4 p-5 sm:grid-cols-2">
         <h2 className="font-semibold sm:col-span-2">Dati della sede</h2>
@@ -60,28 +78,70 @@ export function FormSede({ sede, haToken, haTokenGlobale, aiAttiva, webhookUrl }
       </section>
 
       <section className="card grid gap-4 p-5 sm:grid-cols-2">
-        <h2 className="font-semibold sm:col-span-2">Collegamento WhatsApp Business (Meta)</h2>
-        <Campo label="Phone Number ID">
-          <input name="wa_phone_number_id" defaultValue={sede.wa_phone_number_id ?? ""} className="input" placeholder="es. 123456789012345" />
-        </Campo>
-        <Campo label="Numero visualizzato">
-          <input name="wa_numero_visualizzato" defaultValue={sede.wa_numero_visualizzato ?? ""} className="input" placeholder="+39 333 1234567" />
-        </Campo>
+        <h2 className="font-semibold sm:col-span-2">Collegamento WhatsApp</h2>
         <div className="sm:col-span-2">
-          <Campo label={`Token di accesso della sede ${haToken ? "(impostato – lascia vuoto per non modificarlo)" : haTokenGlobale ? "(facoltativo: si usa il token della rete)" : ""}`}>
-            <input name="wa_access_token" type="password" autoComplete="off" className="input" placeholder={haToken ? "••••••••" : "EAAG…"} />
-          </Campo>
-          {haToken && (
-            <label className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-              <input type="checkbox" name="rimuovi_token" /> Rimuovi il token della sede
+          <label className="label">Fornitore WhatsApp</label>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="radio" name="wa_provider" value="callbell" checked={provider === "callbell"} onChange={() => setProvider("callbell")} /> Callbell (quello che usate oggi)
             </label>
-          )}
+            <label className="flex items-center gap-2">
+              <input type="radio" name="wa_provider" value="meta" checked={provider === "meta"} onChange={() => setProvider("meta")} /> Meta WhatsApp Cloud API (diretto)
+            </label>
+          </div>
         </div>
-        <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 sm:col-span-2">
-          URL del webhook da inserire in Meta: <code className="font-mono">{webhookUrl}</code>
-          <br />
-          Campo da sottoscrivere: <code>messages</code>. Il token di verifica è quello impostato sul server (WHATSAPP_VERIFY_TOKEN).
-        </div>
+
+        {provider === "callbell" ? (
+          <>
+            <div className="sm:col-span-2">
+              <Campo label={`Chiave API Callbell ${haTokenCallbell ? "(impostata – lascia vuoto per non modificarla)" : ""}`}>
+                <input name="callbell_api_token" type="password" autoComplete="off" className="input" placeholder={haTokenCallbell ? "••••••••" : "Callbell → Impostazioni → API"} />
+              </Campo>
+            </div>
+            <Campo label="UUID canale WhatsApp (se avete più numeri)">
+              <input name="callbell_channel_uuid" defaultValue={sede.callbell_channel_uuid ?? ""} className="input" />
+            </Campo>
+            <input type="hidden" name="wa_phone_number_id" value={sede.wa_phone_number_id ?? ""} />
+            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 sm:col-span-2">
+              {webhookCallbell ? (
+                <>
+                  URL da inserire in Callbell (Impostazioni → Integrazioni → Webhook, evento <code>message_created</code> e <code>message_status_updated</code>):
+                  <br />
+                  <code className="font-mono break-all select-all">{webhookCallbell}</code>
+                  <br />
+                  L&apos;URL contiene un codice segreto: non condividerlo.
+                </>
+              ) : (
+                "Salva le impostazioni per generare l'URL del webhook da inserire in Callbell."
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <Campo label="Phone Number ID">
+              <input name="wa_phone_number_id" defaultValue={sede.wa_phone_number_id ?? ""} className="input" placeholder="es. 123456789012345" />
+            </Campo>
+            <Campo label="Numero visualizzato">
+              <input name="wa_numero_visualizzato" defaultValue={sede.wa_numero_visualizzato ?? ""} className="input" placeholder="+39 333 1234567" />
+            </Campo>
+            <div className="sm:col-span-2">
+              <Campo label={`Token di accesso della sede ${haToken ? "(impostato – lascia vuoto per non modificarlo)" : haTokenGlobale ? "(facoltativo: si usa il token della rete)" : ""}`}>
+                <input name="wa_access_token" type="password" autoComplete="off" className="input" placeholder={haToken ? "••••••••" : "EAAG…"} />
+              </Campo>
+              {haToken && (
+                <label className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                  <input type="checkbox" name="rimuovi_token" /> Rimuovi il token della sede
+                </label>
+              )}
+            </div>
+            <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600 sm:col-span-2">
+              URL del webhook da inserire in Meta: <code className="font-mono">{webhookUrl}</code>
+              <br />
+              Campo da sottoscrivere: <code>messages</code>. Il token di verifica è quello impostato sul server (WHATSAPP_VERIFY_TOKEN).
+            </div>
+          </>
+        )}
+        {provider === "callbell" && <input type="hidden" name="wa_numero_visualizzato" value={sede.wa_numero_visualizzato ?? ""} />}
       </section>
 
       {stato?.errore && <p className="text-sm text-red-600">{stato.errore}</p>}
@@ -98,7 +158,7 @@ export function FormSede({ sede, haToken, haTokenGlobale, aiAttiva, webhookUrl }
 export function FormUtente({ officeId, ruoli }: { officeId: string; ruoli: string[] }) {
   const [stato, azione, salvataggio] = useActionState(creaUtente, null);
   return (
-    <form action={azione} className="grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
+    <form onSubmit={inviaSenzaReset(azione)} className="grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
       <h3 className="text-sm font-semibold sm:col-span-2">Aggiungi utente</h3>
       <input type="hidden" name="office_id" value={officeId} />
       <input name="nome_completo" required placeholder="Nome e cognome" className="input" />

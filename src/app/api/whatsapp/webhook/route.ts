@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { verificaFirma, type WaMessaggio, type WaWebhook } from "@/lib/whatsapp";
-import { aggiornaStato, elaboraMessaggio, registraMessaggioInArrivo } from "@/lib/whatsapp-service";
+import { aggiornaStato, allegatoMeta, caricaSede, elaboraMessaggio, registraDaMeta } from "@/lib/whatsapp-service";
 
 export const maxDuration = 120;
 
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
       for (const s of v.statuses ?? []) await aggiornaStato(s);
       for (const m of v.messages ?? []) {
         const nome = v.contacts?.find((c) => c.wa_id === m.from)?.profile?.name;
-        const id = await registraMessaggioInArrivo(v.metadata.phone_number_id, m, nome);
+        const id = await registraDaMeta(v.metadata.phone_number_id, m, nome);
         if (id) daElaborare.push({ id, m });
       }
     }
@@ -46,7 +47,14 @@ export async function POST(req: NextRequest) {
   if (daElaborare.length) {
     after(async () => {
       await Promise.all(
-        daElaborare.map(({ id, m }) => elaboraMessaggio(id, m).catch((e) => console.error("[whatsapp] elaborazione fallita", e))),
+        daElaborare.map(({ id, m }) =>
+          elaboraMessaggio(
+            id,
+            allegatoMeta(m, async () => {
+              const { data } = await createAdminClient().from("whatsapp_messages").select("office_id").eq("id", id).single();
+              return data ? ((await caricaSede(data.office_id))?.wa_access_token ?? null) : null;
+            }),
+          ).catch((e) => console.error("[whatsapp] elaborazione fallita", e))),
       );
     });
   }

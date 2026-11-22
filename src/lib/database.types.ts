@@ -23,7 +23,51 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "audit_log": {
+            "appointments": {
+                  Row: {
+                    "client_id": string | null,"created_at": string,"created_by": string | null,"fine": string,"id": string,"inizio": string,"luogo": string,"nominativo": string | null,"note": string | null,"office_id": string,"operatore_id": string | null,"stato": Database["public"]['Enums']["stato_appuntamento"],"telefono": string | null,"tipo": string,"titolo": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "client_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"fine": string,"id"?: string,"inizio": string,"luogo"?: string,"nominativo"?: string | null,"note"?: string | null,"office_id"?: string,"operatore_id"?: string | null,"stato"?: Database["public"]['Enums']["stato_appuntamento"],"telefono"?: string | null,"tipo"?: string,"titolo": string
+                  }
+                  Update: {
+                    "client_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"fine"?: string,"id"?: string,"inizio"?: string,"luogo"?: string,"nominativo"?: string | null,"note"?: string | null,"office_id"?: string,"operatore_id"?: string | null,"stato"?: Database["public"]['Enums']["stato_appuntamento"],"telefono"?: string | null,"tipo"?: string,"titolo"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "appointments_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "appointments_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "scadenze_permessi"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "appointments_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "appointments_office_id_fkey"
+      columns: ["office_id"]
+isOneToOne: false
+      referencedRelation: "offices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "appointments_operatore_id_fkey"
+      columns: ["operatore_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"audit_log": {
                   Row: {
                     "azione": string,"created_at": string,"dettagli": Json | null,"entita": string | null,"entita_id": string | null,"id": number,"office_id": string | null,"user_id": string | null
                   }
@@ -133,14 +177,14 @@ isOneToOne: false
                   ]
                 },"clients": {
                   Row: {
-                    "cap": string | null,"citta": string | null,"cittadinanza": string | null,"codice": number,"codice_fiscale": string | null,"cognome": string,"consenso_privacy": boolean,"consenso_privacy_data": string | null,"created_at": string,"created_by": string | null,"data_nascita": string | null,"email": string | null,"id": string,"indirizzo": string | null,"lingua_preferita": string,"luogo_nascita": string | null,"nome": string,"note_generali": string | null,"office_id": string,"passaporto_numero": string | null,"passaporto_scadenza": string | null,"permesso_numero": string | null,"permesso_scadenza": string | null,"permesso_tipo": string | null,"search_text": string | null,"sesso": string | null,"stato_civile": string | null,"tags": (string)[],"telefono": string | null,"updated_at": string,"whatsapp_attivo": boolean
+                    "cap": string | null,"citta": string | null,"cittadinanza": string | null,"codice": number,"codice_esterno": string | null,"codice_fiscale": string | null,"cognome": string,"consenso_privacy": boolean,"consenso_privacy_data": string | null,"created_at": string,"created_by": string | null,"data_nascita": string | null,"email": string | null,"id": string,"indirizzo": string | null,"lingua_preferita": string,"luogo_nascita": string | null,"nome": string,"note_generali": string | null,"office_id": string,"passaporto_numero": string | null,"passaporto_scadenza": string | null,"permesso_numero": string | null,"permesso_scadenza": string | null,"permesso_tipo": string | null,"search_text": string | null,"sesso": string | null,"stato_civile": string | null,"tags": (string)[],"telefono": string | null,"updated_at": string,"whatsapp_attivo": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "cap"?: string | null,"citta"?: string | null,"cittadinanza"?: string | null,"codice"?: number,"codice_fiscale"?: string | null,"cognome": string,"consenso_privacy"?: boolean,"consenso_privacy_data"?: string | null,"created_at"?: string,"created_by"?: string | null,"data_nascita"?: string | null,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"lingua_preferita"?: string,"luogo_nascita"?: string | null,"nome": string,"note_generali"?: string | null,"office_id": string,"passaporto_numero"?: string | null,"passaporto_scadenza"?: string | null,"permesso_numero"?: string | null,"permesso_scadenza"?: string | null,"permesso_tipo"?: string | null,"search_text"?: never,"sesso"?: string | null,"stato_civile"?: string | null,"tags"?: (string)[],"telefono"?: string | null,"updated_at"?: string,"whatsapp_attivo"?: boolean
+                    "cap"?: string | null,"citta"?: string | null,"cittadinanza"?: string | null,"codice"?: number,"codice_esterno"?: string | null,"codice_fiscale"?: string | null,"cognome": string,"consenso_privacy"?: boolean,"consenso_privacy_data"?: string | null,"created_at"?: string,"created_by"?: string | null,"data_nascita"?: string | null,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"lingua_preferita"?: string,"luogo_nascita"?: string | null,"nome": string,"note_generali"?: string | null,"office_id": string,"passaporto_numero"?: string | null,"passaporto_scadenza"?: string | null,"permesso_numero"?: string | null,"permesso_scadenza"?: string | null,"permesso_tipo"?: string | null,"search_text"?: never,"sesso"?: string | null,"stato_civile"?: string | null,"tags"?: (string)[],"telefono"?: string | null,"updated_at"?: string,"whatsapp_attivo"?: boolean
                   }
                   Update: {
-                    "cap"?: string | null,"citta"?: string | null,"cittadinanza"?: string | null,"codice"?: number,"codice_fiscale"?: string | null,"cognome"?: string,"consenso_privacy"?: boolean,"consenso_privacy_data"?: string | null,"created_at"?: string,"created_by"?: string | null,"data_nascita"?: string | null,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"lingua_preferita"?: string,"luogo_nascita"?: string | null,"nome"?: string,"note_generali"?: string | null,"office_id"?: string,"passaporto_numero"?: string | null,"passaporto_scadenza"?: string | null,"permesso_numero"?: string | null,"permesso_scadenza"?: string | null,"permesso_tipo"?: string | null,"search_text"?: never,"sesso"?: string | null,"stato_civile"?: string | null,"tags"?: (string)[],"telefono"?: string | null,"updated_at"?: string,"whatsapp_attivo"?: boolean
+                    "cap"?: string | null,"citta"?: string | null,"cittadinanza"?: string | null,"codice"?: number,"codice_esterno"?: string | null,"codice_fiscale"?: string | null,"cognome"?: string,"consenso_privacy"?: boolean,"consenso_privacy_data"?: string | null,"created_at"?: string,"created_by"?: string | null,"data_nascita"?: string | null,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"lingua_preferita"?: string,"luogo_nascita"?: string | null,"nome"?: string,"note_generali"?: string | null,"office_id"?: string,"passaporto_numero"?: string | null,"passaporto_scadenza"?: string | null,"permesso_numero"?: string | null,"permesso_scadenza"?: string | null,"permesso_tipo"?: string | null,"search_text"?: never,"sesso"?: string | null,"stato_civile"?: string | null,"tags"?: (string)[],"telefono"?: string | null,"updated_at"?: string,"whatsapp_attivo"?: boolean
                   }
                   Relationships: [
                     {
@@ -241,14 +285,14 @@ isOneToOne: false
                   ]
                 },"office_secrets": {
                   Row: {
-                    "office_id": string,"wa_access_token": string | null
+                    "callbell_api_token": string | null,"callbell_webhook_token": string | null,"office_id": string,"wa_access_token": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "office_id": string,"wa_access_token"?: string | null
+                    "callbell_api_token"?: string | null,"callbell_webhook_token"?: string | null,"office_id": string,"wa_access_token"?: string | null
                   }
                   Update: {
-                    "office_id"?: string,"wa_access_token"?: string | null
+                    "callbell_api_token"?: string | null,"callbell_webhook_token"?: string | null,"office_id"?: string,"wa_access_token"?: string | null
                   }
                   Relationships: [
                     {
@@ -261,14 +305,14 @@ isOneToOne: true
                   ]
                 },"offices": {
                   Row: {
-                    "ai_istruzioni": string,"ai_risposta_automatica": boolean,"attiva": boolean,"citta": string | null,"created_at": string,"email": string | null,"id": string,"indirizzo": string | null,"nome": string,"telefono": string | null,"wa_numero_visualizzato": string | null,"wa_phone_number_id": string | null
+                    "ai_istruzioni": string,"ai_risposta_automatica": boolean,"attiva": boolean,"callbell_channel_uuid": string | null,"citta": string | null,"created_at": string,"email": string | null,"id": string,"indirizzo": string | null,"nome": string,"telefono": string | null,"wa_numero_visualizzato": string | null,"wa_phone_number_id": string | null,"wa_provider": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "ai_istruzioni"?: string,"ai_risposta_automatica"?: boolean,"attiva"?: boolean,"citta"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"nome": string,"telefono"?: string | null,"wa_numero_visualizzato"?: string | null,"wa_phone_number_id"?: string | null
+                    "ai_istruzioni"?: string,"ai_risposta_automatica"?: boolean,"attiva"?: boolean,"callbell_channel_uuid"?: string | null,"citta"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"nome": string,"telefono"?: string | null,"wa_numero_visualizzato"?: string | null,"wa_phone_number_id"?: string | null,"wa_provider"?: string
                   }
                   Update: {
-                    "ai_istruzioni"?: string,"ai_risposta_automatica"?: boolean,"attiva"?: boolean,"citta"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"nome"?: string,"telefono"?: string | null,"wa_numero_visualizzato"?: string | null,"wa_phone_number_id"?: string | null
+                    "ai_istruzioni"?: string,"ai_risposta_automatica"?: boolean,"attiva"?: boolean,"callbell_channel_uuid"?: string | null,"citta"?: string | null,"created_at"?: string,"email"?: string | null,"id"?: string,"indirizzo"?: string | null,"nome"?: string,"telefono"?: string | null,"wa_numero_visualizzato"?: string | null,"wa_phone_number_id"?: string | null,"wa_provider"?: string
                   }
                   Relationships: [
                     
@@ -287,6 +331,62 @@ isOneToOne: true
                   Relationships: [
                     {
       foreignKeyName: "profiles_office_id_fkey"
+      columns: ["office_id"]
+isOneToOne: false
+      referencedRelation: "offices"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"tasks": {
+                  Row: {
+                    "assegnato_a": string | null,"case_id": string | null,"client_id": string | null,"completato_at": string | null,"completato_da": string | null,"created_at": string,"created_by": string | null,"descrizione": string | null,"id": string,"office_id": string,"origine": string,"priorita": Database["public"]['Enums']["priorita"],"scadenza": string | null,"stato": Database["public"]['Enums']["stato_attivita"],"titolo": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "assegnato_a"?: string | null,"case_id"?: string | null,"client_id"?: string | null,"completato_at"?: string | null,"completato_da"?: string | null,"created_at"?: string,"created_by"?: string | null,"descrizione"?: string | null,"id"?: string,"office_id"?: string,"origine"?: string,"priorita"?: Database["public"]['Enums']["priorita"],"scadenza"?: string | null,"stato"?: Database["public"]['Enums']["stato_attivita"],"titolo": string
+                  }
+                  Update: {
+                    "assegnato_a"?: string | null,"case_id"?: string | null,"client_id"?: string | null,"completato_at"?: string | null,"completato_da"?: string | null,"created_at"?: string,"created_by"?: string | null,"descrizione"?: string | null,"id"?: string,"office_id"?: string,"origine"?: string,"priorita"?: Database["public"]['Enums']["priorita"],"scadenza"?: string | null,"stato"?: Database["public"]['Enums']["stato_attivita"],"titolo"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tasks_assegnato_a_fkey"
+      columns: ["assegnato_a"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_case_id_fkey"
+      columns: ["case_id"]
+isOneToOne: false
+      referencedRelation: "cases"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_client_id_fkey"
+      columns: ["client_id"]
+isOneToOne: false
+      referencedRelation: "scadenze_permessi"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_completato_da_fkey"
+      columns: ["completato_da"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "tasks_office_id_fkey"
       columns: ["office_id"]
 isOneToOne: false
       referencedRelation: "offices"
@@ -400,7 +500,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "direzione_msg": "in"|"out","origine_nota": "manuale"|"whatsapp"|"ai"|"sistema","ruolo_utente": "admin_rete"|"titolare"|"operatore","stato_pratica": "aperta"|"in_attesa_documenti"|"presentata"|"in_lavorazione"|"conclusa_positiva"|"conclusa_negativa"|"archiviata"
+            "direzione_msg": "in"|"out","origine_nota": "manuale"|"whatsapp"|"ai"|"sistema","priorita": "bassa"|"normale"|"alta","ruolo_utente": "admin_rete"|"titolare"|"operatore","stato_appuntamento": "programmato"|"confermato"|"completato"|"annullato"|"non_presentato","stato_attivita": "da_fare"|"fatto","stato_pratica": "aperta"|"in_attesa_documenti"|"presentata"|"in_lavorazione"|"conclusa_positiva"|"conclusa_negativa"|"archiviata"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -520,7 +620,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "direzione_msg": ["in", "out"],"origine_nota": ["manuale", "whatsapp", "ai", "sistema"],"ruolo_utente": ["admin_rete", "titolare", "operatore"],"stato_pratica": ["aperta", "in_attesa_documenti", "presentata", "in_lavorazione", "conclusa_positiva", "conclusa_negativa", "archiviata"]
+            "direzione_msg": ["in", "out"],"origine_nota": ["manuale", "whatsapp", "ai", "sistema"],"priorita": ["bassa", "normale", "alta"],"ruolo_utente": ["admin_rete", "titolare", "operatore"],"stato_appuntamento": ["programmato", "confermato", "completato", "annullato", "non_presentato"],"stato_attivita": ["da_fare", "fatto"],"stato_pratica": ["aperta", "in_attesa_documenti", "presentata", "in_lavorazione", "conclusa_positiva", "conclusa_negativa", "archiviata"]
           }
         }
 } as const

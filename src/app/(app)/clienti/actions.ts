@@ -19,7 +19,7 @@ import {
 } from "@/lib/ai/claude";
 import type { Database, Json } from "@/lib/database.types";
 
-type Esito = { errore?: string; ok?: string } | null;
+type Esito = { errore?: string; ok?: string; id?: string } | null;
 
 /** office_id dei record figli viene sempre ricopiato dal cliente da un trigger nel database. */
 const DA_TRIGGER = "00000000-0000-0000-0000-000000000000";
@@ -172,17 +172,17 @@ export async function aggiungiNota(_: Esito, f: FormData): Promise<Esito> {
   const clientId = String(f.get("client_id"));
   const t = String(f.get("testo") ?? "").trim();
   if (!t) return { errore: "Scrivi il testo della nota" };
-  const { error } = await supabase.from("client_notes").insert({
+  const { data: nuova, error } = await supabase.from("client_notes").insert({
     client_id: clientId,
     office_id: DA_TRIGGER,
     numero: 0, // assegnato dal trigger (progressivo per cliente)
     testo: t,
     data_visita: testo(f, "data_visita") ?? oggiISO(),
     rettifica_di: testo(f, "rettifica_di"),
-  });
+  }).select("id").single();
   if (error) return { errore: "Nota non salvata: " + error.message };
   revalidatePath(`/clienti/${clientId}`);
-  return { ok: "Nota aggiunta" };
+  return { ok: "Nota aggiunta", id: nuova.id };
 }
 
 export async function eliminaNota(noteId: string, clientId: string) {

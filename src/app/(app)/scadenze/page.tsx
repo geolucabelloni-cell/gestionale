@@ -4,14 +4,26 @@ import { data, dataTraGiorni, giorniA } from "@/lib/format";
 import { formattaTelefono } from "@/lib/telefono";
 import { BadgeScadenza } from "@/components/badge-scadenza";
 import { oggiISO } from "@/lib/contesto";
+import { richiediProfilo } from "@/lib/auth";
+import { caricaAttivita } from "@/lib/attivita";
+import { operatoriVisibili } from "@/lib/agenda";
+import { ListaAttivita } from "@/components/attivita/lista-attivita";
 
 const FINESTRE = [30, 60, 90, 180];
 
 export default async function ScadenzePage({ searchParams }: PageProps<"/scadenze">) {
   const sp = await searchParams;
   const giorni = FINESTRE.includes(Number(sp.giorni)) ? Number(sp.giorni) : 90;
+  const profilo = await richiediProfilo();
+  const solo = sp.chi === "mie" ? "mie" : "tutte";
+  const conCompletate = sp.completate === "1";
   const supabase = await createClient();
   const oggi = oggiISO();
+  const [attivita, operatori] = await Promise.all([
+    caricaAttivita(supabase, { assegnatoA: solo === "mie" ? profilo.id : undefined, conCompletate }),
+    operatoriVisibili(supabase),
+  ]);
+  const filtri = (chi: string, comp: boolean) => `/scadenze?giorni=${giorni}&chi=${chi}${comp ? "&completate=1" : ""}`;
   const fine = dataTraGiorni(giorni);
   const scadutiDa = dataTraGiorni(-60);
 
@@ -41,12 +53,34 @@ export default async function ScadenzePage({ searchParams }: PageProps<"/scadenz
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Scadenze</h1>
-          <p className="text-sm text-slate-500">Permessi e passaporti in scadenza (inclusi quelli scaduti da meno di 60 giorni) e scadenze delle pratiche.</p>
+          <h1 className="text-2xl font-semibold">Scadenze e attività</h1>
+          <p className="text-sm text-slate-500">Le cose da fare dello studio e, sotto, le scadenze di permessi, passaporti e pratiche.</p>
         </div>
+      </div>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="mr-auto text-lg font-semibold">Attività</h2>
+          <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm">
+            <Link href={filtri("tutte", conCompletate)} className={`rounded-md px-3 py-1.5 ${solo === "tutte" ? "bg-brand-600 text-white" : "text-slate-600"}`}>
+              Tutte
+            </Link>
+            <Link href={filtri("mie", conCompletate)} className={`rounded-md px-3 py-1.5 ${solo === "mie" ? "bg-brand-600 text-white" : "text-slate-600"}`}>
+              Le mie
+            </Link>
+          </div>
+          <Link href={filtri(solo, !conCompletate)} className="btn-ghost text-xs">
+            {conCompletate ? "Nascondi completate" : "Mostra completate"}
+          </Link>
+        </div>
+        <ListaAttivita attivita={attivita} operatori={operatori} oggi={oggi} tra7={dataTraGiorni(7)} />
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
+        <h2 className="text-lg font-semibold">Scadenze documenti e pratiche</h2>
         <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm">
           {FINESTRE.map((g) => (
-            <Link key={g} href={`/scadenze?giorni=${g}`} className={`rounded-md px-3 py-1.5 ${g === giorni ? "bg-brand-600 text-white" : "text-slate-600"}`}>
+            <Link key={g} href={`/scadenze?giorni=${g}&chi=${solo}${conCompletate ? "&completate=1" : ""}`} className={`rounded-md px-3 py-1.5 ${g === giorni ? "bg-brand-600 text-white" : "text-slate-600"}`}>
               {g} gg
             </Link>
           ))}

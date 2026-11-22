@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { inviaSenzaReset } from "@/lib/form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { eliminaPratica, salvaPratica } from "@/app/(app)/clienti/actions";
 import { data, giorniA, STATI_PRATICA, TIPI_PRATICA } from "@/lib/format";
@@ -71,7 +72,7 @@ function FormPratica({ clientId, pratica, onChiudi }: { clientId: string; pratic
     return r;
   }, null);
   return (
-    <form action={azione} className="card grid gap-3 border-brand-200 p-4 sm:grid-cols-2">
+    <form onSubmit={inviaSenzaReset(azione)} className="card grid gap-3 border-brand-200 p-4 sm:grid-cols-2">
       <input type="hidden" name="client_id" value={clientId} />
       {pratica && <input type="hidden" name="id" value={pratica.id} />}
       <div>

@@ -1,11 +1,12 @@
 "use client";
 import { useActionState } from "react";
+import { inviaSenzaReset } from "@/lib/form";
 import { accedi } from "./actions";
 
 export function LoginForm() {
   const [stato, azione, inCorso] = useActionState(accedi, null);
   return (
-    <form action={azione} className="space-y-4">
+    <form onSubmit={inviaSenzaReset(azione)} className="space-y-4">
       <div>
         <label className="label" htmlFor="email">Email</label>
         <input id="email" name="email" type="email" required autoComplete="email" className="input" />

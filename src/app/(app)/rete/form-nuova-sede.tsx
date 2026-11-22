@@ -1,11 +1,12 @@
 "use client";
 import { useActionState } from "react";
+import { inviaSenzaReset } from "@/lib/form";
 import { creaSede } from "../impostazioni/actions";
 
 export function FormNuovaSede() {
   const [stato, azione, inCorso] = useActionState(creaSede, null);
   return (
-    <form action={azione} className="card grid gap-3 p-5 sm:grid-cols-2">
+    <form onSubmit={inviaSenzaReset(azione)} className="card grid gap-3 p-5 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <h2 className="font-semibold">Apri una nuova sede</h2>
         <p className="text-sm text-slate-500">Crea la sede e l&apos;account del titolare. Le informazioni per l&apos;AI vengono copiate dalla sede centrale e il titolare potrà adattarle.</p>

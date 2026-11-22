@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_NOME_STUDIO || "Gestionale Studio",
+  title: process.env.NEXT_PUBLIC_NOME_STUDIO || "IOSTRANIERO",
   description: "Gestionale clienti, pratiche e documenti per studi di diritto dell'immigrazione",
 };
 

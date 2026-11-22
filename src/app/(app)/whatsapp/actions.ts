@@ -4,8 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { richiediProfilo } from "@/lib/auth";
-import { inviaTesto } from "@/lib/whatsapp";
-import { caricaSede } from "@/lib/whatsapp-service";
+import { canaleConfigurato, caricaSede, inviaTestoSede } from "@/lib/whatsapp-service";
 import { caricaContestoCliente, oggiISO } from "@/lib/contesto";
 import { generaRispostaWhatsapp, AiNonConfigurata } from "@/lib/ai/claude";
 import { associaMessaggiWhatsapp } from "@/app/(app)/clienti/actions";
@@ -22,7 +21,7 @@ export async function inviaRisposta(officeId: string, telefono: string, testo: s
   if (!testo.trim()) return { errore: "Messaggio vuoto" };
   await verificaSede(officeId);
   const sede = await caricaSede(officeId);
-  if (!sede?.wa_phone_number_id) return { errore: "Numero WhatsApp della sede non configurato (Impostazioni sede)" };
+  if (!sede || !canaleConfigurato(sede)) return { errore: "Canale WhatsApp della sede non configurato (Impostazioni sede)" };
 
   const db = createAdminClient();
   // regola Meta: messaggi liberi solo entro 24 ore dall'ultimo messaggio del cliente
@@ -41,7 +40,7 @@ export async function inviaRisposta(officeId: string, telefono: string, testo: s
 
   let waId: string | null;
   try {
-    waId = await inviaTesto({ phoneNumberId: sede.wa_phone_number_id, a: telefono, testo, tokenSede: sede.wa_access_token });
+    waId = await inviaTestoSede(sede, telefono, testo);
   } catch (e) {
     return { errore: e instanceof Error ? e.message : "Invio non riuscito" };
   }

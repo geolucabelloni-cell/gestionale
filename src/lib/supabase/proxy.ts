@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBBLICHE = ["/login", "/api/whatsapp/webhook"];
+const PUBBLICHE = ["/login", "/api/whatsapp/webhook", "/api/callbell/webhook"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

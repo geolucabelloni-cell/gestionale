@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Users, MessageCircle, CalendarClock, Settings, Network, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, MessageCircle, CalendarClock, CalendarDays, Upload, Settings, Network, LogOut, Menu, X } from "lucide-react";
 
 type Props = {
   nomeStudio: string;
@@ -11,6 +11,7 @@ type Props = {
   sede: string;
   ruoloCodice: "admin_rete" | "titolare" | "operatore";
   whatsappDaGestire: number;
+  attivitaScadute: number;
 };
 
 export function Sidebar(p: Props) {
@@ -18,10 +19,16 @@ export function Sidebar(p: Props) {
   const [aperto, setAperto] = useState(false);
   const voci = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/agenda", label: "Agenda", icon: CalendarDays },
     { href: "/clienti", label: "Clienti", icon: Users },
     { href: "/whatsapp", label: "WhatsApp", icon: MessageCircle, badge: p.whatsappDaGestire },
-    { href: "/scadenze", label: "Scadenze", icon: CalendarClock },
-    ...(p.ruoloCodice !== "operatore" ? [{ href: "/impostazioni", label: "Impostazioni sede", icon: Settings }] : []),
+    { href: "/scadenze", label: "Scadenze e attività", icon: CalendarClock, badge: p.attivitaScadute },
+    ...(p.ruoloCodice !== "operatore"
+      ? [
+          { href: "/importa", label: "Importa da TeamSystem", icon: Upload },
+          { href: "/impostazioni", label: "Impostazioni sede", icon: Settings },
+        ]
+      : []),
     ...(p.ruoloCodice === "admin_rete" ? [{ href: "/rete", label: "Rete franchising", icon: Network }] : []),
   ];
   const attiva = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
@@ -29,7 +36,11 @@ export function Sidebar(p: Props) {
   return (
     <>
       <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-        <span className="font-semibold text-brand-900">{p.nomeStudio}</span>
+        <span className="flex items-center gap-2 font-bold text-brand-600">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-iostraniero.png" alt="" className="h-8 w-8 rounded" />
+          {p.nomeStudio}
+        </span>
         <button className="btn-ghost" onClick={() => setAperto(!aperto)} aria-label="Menu">
           {aperto ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -37,9 +48,13 @@ export function Sidebar(p: Props) {
       <aside
         className={`${aperto ? "block" : "hidden"} border-r border-slate-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col`}
       >
-        <div className="hidden px-5 py-5 lg:block">
-          <div className="text-lg font-semibold text-brand-900">{p.nomeStudio}</div>
-          <div className="text-xs text-slate-500">{p.sede}</div>
+        <div className="hidden items-center gap-3 px-5 py-5 lg:flex">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-iostraniero.png" alt="" className="h-11 w-11 rounded-md" />
+          <div>
+            <div className="text-lg font-bold tracking-wide text-brand-600">{p.nomeStudio}</div>
+            <div className="text-xs text-slate-500">{p.sede}</div>
+          </div>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
           {voci.map((v) => (

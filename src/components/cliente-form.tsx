@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState, useTransition } from "react";
+import { inviaSenzaReset } from "@/lib/form";
 import { Sparkles, Upload } from "lucide-react";
 import { salvaCliente, aiEstraiDaDocumento } from "@/app/(app)/clienti/actions";
 import { LINGUE, TIPI_PERMESSO } from "@/lib/format";
@@ -53,7 +54,7 @@ export function ClienteForm({ cliente, sedi, aiAttiva }: { cliente?: Cliente; se
 
   const c = cliente ?? {};
   return (
-    <form ref={formRef} action={azione} className="space-y-6">
+    <form ref={formRef} onSubmit={inviaSenzaReset(azione)} className="space-y-6">
       {c.id && <input type="hidden" name="id" value={c.id} />}
 
       {aiAttiva && (

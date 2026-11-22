@@ -4,6 +4,7 @@ import { aiDisponibile, generaRispostaWhatsapp, AiRifiuto } from "@/lib/ai/claud
 import { caricaContestoCliente, oggiISO } from "@/lib/contesto";
 import { analizzaDocumento, BUCKET, estensione, nomeFileSicuro, percorsoStorage } from "@/lib/documenti";
 import { inviaTesto, scaricaMedia, testoDelMessaggio, type WaMessaggio, type WaStato } from "@/lib/whatsapp";
+import { inviaTestoCallbell } from "@/lib/callbell";
 
 /** Attesa prima di rispondere: se il cliente scrive più messaggi di fila si risponde una volta sola. */
 const ATTESA_RAGGRUPPAMENTO_MS = Number(process.env.WHATSAPP_ATTESA_MS ?? 8000);
@@ -13,8 +14,11 @@ const ORE_SILENZIO_CORTESIA = 6;
 export type Sede = {
   id: string;
   nome: string;
+  wa_provider: string;
   wa_phone_number_id: string | null;
   wa_access_token: string | null;
+  callbell_channel_uuid: string | null;
+  callbell_api_token: string | null;
   ai_risposta_automatica: boolean;
   ai_istruzioni: string;
 };
@@ -24,12 +28,50 @@ export async function caricaSede(officeId: string): Promise<Sede | null> {
   const db = createAdminClient();
   const { data } = await db
     .from("offices")
-    .select("id, nome, wa_phone_number_id, ai_risposta_automatica, ai_istruzioni, office_secrets(wa_access_token)")
+    .select("id, nome, wa_provider, wa_phone_number_id, callbell_channel_uuid, ai_risposta_automatica, ai_istruzioni, office_secrets(wa_access_token, callbell_api_token)")
     .eq("id", officeId)
     .single();
   if (!data) return null;
   const { office_secrets, ...resto } = data;
-  return { ...resto, wa_access_token: office_secrets?.wa_access_token ?? null };
+  return { ...resto, wa_access_token: office_secrets?.wa_access_token ?? null, callbell_api_token: office_secrets?.callbell_api_token ?? null };
+}
+
+/** La sede ha un canale WhatsApp utilizzabile per inviare? */
+export function canaleConfigurato(sede: Sede) {
+  if (sede.wa_provider === "callbell") return !!(sede.callbell_api_token || process.env.CALLBELL_API_TOKEN);
+  return !!sede.wa_phone_number_id && !!(sede.wa_access_token || process.env.WHATSAPP_ACCESS_TOKEN);
+}
+
+/** Invia un testo al cliente con il canale della sede (Meta diretto o Callbell). Restituisce l'id del messaggio. */
+export async function inviaTestoSede(sede: Sede, telefono: string, testo: string) {
+  if (sede.wa_provider === "callbell") {
+    const token = sede.callbell_api_token || process.env.CALLBELL_API_TOKEN;
+    if (!token) throw new Error("Callbell non configurato: manca la chiave API");
+    return inviaTestoCallbell({ token, a: telefono, testo, channelUuid: sede.callbell_channel_uuid });
+  }
+  if (!sede.wa_phone_number_id) throw new Error("Numero WhatsApp della sede non configurato");
+  return inviaTesto({ phoneNumberId: sede.wa_phone_number_id, a: telefono, testo, tokenSede: sede.wa_access_token });
+}
+
+/** Allegato ricevuto, indipendente dal canale. */
+export type Allegato = { scarica: () => Promise<{ buffer: Buffer; mime: string }>; filename: string | null; caption: string | null };
+
+/** Messaggio in arrivo da Meta: trova la sede dal phone_number_id. */
+export async function registraDaMeta(phoneNumberId: string, m: WaMessaggio, nomeProfilo?: string) {
+  const db = createAdminClient();
+  const { data: sede } = await db.from("offices").select("id").eq("wa_phone_number_id", phoneNumberId).maybeSingle();
+  if (!sede) {
+    console.warn(`[whatsapp] nessuna sede configurata per phone_number_id ${phoneNumberId}`);
+    return null;
+  }
+  return registraInArrivo(sede.id, { idEsterno: m.id, telefono: m.from, nomeProfilo: nomeProfilo ?? null, tipo: m.type, testo: testoDelMessaggio(m) || null });
+}
+
+/** Allegato di un messaggio Meta (foto o documento). */
+export function allegatoMeta(m: WaMessaggio, sedeToken: () => Promise<string | null>): Allegato | null {
+  const media = m.image ?? m.document;
+  if (!media) return null;
+  return { scarica: async () => scaricaMedia(media.id, await sedeToken()), filename: media.filename ?? null, caption: media.caption ?? null };
 }
 
 export async function aggiornaStato(stato: WaStato) {
@@ -37,20 +79,17 @@ export async function aggiornaStato(stato: WaStato) {
   await db.from("whatsapp_messages").update({ stato_invio: stato.status }).eq("wa_message_id", stato.id);
 }
 
-/** Salva un messaggio in arrivo, archivia eventuali allegati e restituisce l'id del record (null se duplicato o sede sconosciuta). */
-export async function registraMessaggioInArrivo(phoneNumberId: string, m: WaMessaggio, nomeProfilo?: string) {
+/** Salva un messaggio in arrivo e restituisce l'id del record (null se duplicato). */
+export async function registraInArrivo(
+  officeId: string,
+  m: { idEsterno: string; telefono: string; nomeProfilo: string | null; tipo: string; testo: string | null },
+) {
   const db = createAdminClient();
-  const { data: sede } = await db.from("offices").select("id, nome").eq("wa_phone_number_id", phoneNumberId).maybeSingle();
-  if (!sede) {
-    console.warn(`[whatsapp] nessuna sede configurata per phone_number_id ${phoneNumberId}`);
-    return null;
-  }
-
   const { data: cliente } = await db
     .from("clients")
     .select("id")
-    .eq("office_id", sede.id)
-    .eq("telefono", m.from)
+    .eq("office_id", officeId)
+    .eq("telefono", m.telefono)
     .order("created_at")
     .limit(1)
     .maybeSingle();
@@ -58,28 +97,28 @@ export async function registraMessaggioInArrivo(phoneNumberId: string, m: WaMess
   const { data: msg, error } = await db
     .from("whatsapp_messages")
     .insert({
-      office_id: sede.id,
+      office_id: officeId,
       client_id: cliente?.id ?? null,
-      wa_message_id: m.id,
-      telefono: m.from,
-      nome_profilo: nomeProfilo ?? null,
+      wa_message_id: m.idEsterno,
+      telefono: m.telefono,
+      nome_profilo: m.nomeProfilo,
       direzione: "in",
-      tipo: m.type,
-      testo: testoDelMessaggio(m) || null,
+      tipo: m.tipo,
+      testo: m.testo,
       // created_at = istante di ricezione (precisione al microsecondo): il timestamp di
       // WhatsApp è al secondo e non basta a capire quale messaggio è arrivato per ultimo
     })
     .select("id")
     .single();
   if (error) {
-    if (error.code === "23505") return null; // già ricevuto (Meta ritrasmette i webhook)
+    if (error.code === "23505") return null; // già ricevuto (i webhook vengono ritrasmessi)
     throw error;
   }
   return msg.id;
 }
 
 /** Elaborazione lenta (download allegati + AI), da eseguire dopo aver risposto 200 a Meta. */
-export async function elaboraMessaggio(messageId: string, m: WaMessaggio) {
+export async function elaboraMessaggio(messageId: string, allegato: Allegato | null) {
   const db = createAdminClient();
   const { data: rec } = await db.from("whatsapp_messages").select("*").eq("id", messageId).single();
   if (!rec) return;
@@ -87,10 +126,9 @@ export async function elaboraMessaggio(messageId: string, m: WaMessaggio) {
   if (!sede) return;
 
   // 1. Allegati (foto e documenti) → archivio del cliente
-  const media = m.image ?? m.document;
-  if (media) {
+  if (allegato) {
     try {
-      await archiviaAllegato(sede, rec.id, rec.client_id, media.id, media.filename ?? null, media.caption ?? null);
+      await archiviaAllegato(sede, rec.id, rec.client_id, allegato);
     } catch (e) {
       console.error("[whatsapp] errore archiviazione allegato", e);
     }
@@ -116,12 +154,11 @@ async function archiviaAllegato(
   sede: Sede,
   messageId: string,
   clientId: string | null,
-  mediaId: string,
-  filename: string | null,
-  caption: string | null,
+  allegato: Allegato,
 ) {
   const db = createAdminClient();
-  const { buffer, mime } = await scaricaMedia(mediaId, sede.wa_access_token);
+  const { filename, caption } = allegato;
+  const { buffer, mime } = await allegato.scarica();
   const nome = filename ? nomeFileSicuro(filename) : `whatsapp_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.${estensione(mime)}`;
 
   if (!clientId) {
@@ -172,7 +209,7 @@ async function rispondiConAi(sede: Sede, messageId: string) {
   if (!sede.ai_risposta_automatica) return daGestire("Risposta automatica disattivata per la sede");
   if (!aiDisponibile()) return daGestire("AI non configurata");
   if (rec.tipo === "audio") return daGestire("Messaggio vocale: da ascoltare");
-  if (!sede.wa_phone_number_id) return daGestire("Numero WhatsApp della sede non configurato");
+  if (!canaleConfigurato(sede)) return daGestire("Canale WhatsApp della sede non configurato");
 
   const contesto = await caricaContestoCliente(db, rec.client_id, 25);
   const { data: storico } = await db
@@ -206,7 +243,7 @@ async function rispondiConAi(sede: Sede, messageId: string) {
 
   if (ris.rispondi_automaticamente && ris.risposta.trim()) {
     try {
-      const waId = await inviaTesto({ phoneNumberId: sede.wa_phone_number_id, a: rec.telefono, testo: ris.risposta, tokenSede: sede.wa_access_token });
+      const waId = await inviaTestoSede(sede, rec.telefono, ris.risposta);
       await db.from("whatsapp_messages").insert({
         office_id: sede.id,
         client_id: rec.client_id,
@@ -248,7 +285,7 @@ async function rispondiConAi(sede: Sede, messageId: string) {
       .gte("created_at", da);
     if (!count) {
       try {
-        const waId = await inviaTesto({ phoneNumberId: sede.wa_phone_number_id, a: rec.telefono, testo: ris.messaggio_attesa, tokenSede: sede.wa_access_token });
+        const waId = await inviaTestoSede(sede, rec.telefono, ris.messaggio_attesa);
         await db.from("whatsapp_messages").insert({
           office_id: sede.id,
           client_id: rec.client_id,

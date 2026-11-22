@@ -27,6 +27,8 @@ export async function salvaSede(_: Esito, f: FormData): Promise<Esito> {
       telefono: t(f, "telefono") || null,
       email: t(f, "email") || null,
       wa_phone_number_id: phoneId,
+      wa_provider: t(f, "wa_provider") === "callbell" ? "callbell" : "meta",
+      callbell_channel_uuid: t(f, "callbell_channel_uuid") || null,
       wa_numero_visualizzato: t(f, "wa_numero_visualizzato") || null,
       ai_risposta_automatica: f.get("ai_risposta_automatica") === "on",
       ai_istruzioni: t(f, "ai_istruzioni"),
@@ -34,11 +36,16 @@ export async function salvaSede(_: Esito, f: FormData): Promise<Esito> {
     .eq("id", id);
   if (error) return { errore: error.code === "23505" ? "Questo Phone Number ID è già usato da un'altra sede" : error.message };
 
+  const admin = createAdminClient();
+  const { data: segreti } = await admin.from("office_secrets").select("*").eq("office_id", id).maybeSingle();
+  const nuovi = { office_id: id, wa_access_token: segreti?.wa_access_token ?? null, callbell_api_token: segreti?.callbell_api_token ?? null, callbell_webhook_token: segreti?.callbell_webhook_token ?? null };
   const token = t(f, "wa_access_token");
-  if (token || f.get("rimuovi_token") === "on") {
-    const admin = createAdminClient();
-    await admin.from("office_secrets").upsert({ office_id: id, wa_access_token: token || null });
-  }
+  if (token) nuovi.wa_access_token = token;
+  if (f.get("rimuovi_token") === "on") nuovi.wa_access_token = null;
+  const tokenCallbell = t(f, "callbell_api_token");
+  if (tokenCallbell) nuovi.callbell_api_token = tokenCallbell;
+  if (t(f, "wa_provider") === "callbell" && !nuovi.callbell_webhook_token) nuovi.callbell_webhook_token = crypto.randomUUID().replaceAll("-", "");
+  await admin.from("office_secrets").upsert(nuovi);
   revalidatePath("/impostazioni");
   return { ok: "Impostazioni salvate" };
 }

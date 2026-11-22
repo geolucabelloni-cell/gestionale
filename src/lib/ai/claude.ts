@@ -281,3 +281,72 @@ export async function classificaDocumento(base64: string, mime: string, cartelle
     effort: "low",
   });
 }
+
+// ---------------------------------------------------------------------
+// 6. Agente attività: dal testo (nota o chat) alle cose da fare
+// ---------------------------------------------------------------------
+export const SchemaAttivitaEstratte = z.object({
+  attivita: z
+    .array(
+      z.object({
+        titolo: z.string().describe("Azione concreta per lo studio, all'infinito, es. 'Richiedere CUD al cliente'"),
+        descrizione: z.string().nullable(),
+        scadenza: z.string().nullable().describe("YYYY-MM-DD se deducibile dal testo, altrimenti null"),
+        priorita: z.enum(["bassa", "normale", "alta"]),
+      }),
+    )
+    .describe("Cose che lo studio deve fare. Vuoto se non ce ne sono."),
+  appuntamenti: z
+    .array(
+      z.object({
+        titolo: z.string(),
+        tipo: z.enum(["Consulenza", "Consegna documenti", "Ritiro documenti", "Questura – impronte", "Questura – ritiro permesso", "Prefettura", "Udienza", "Altro"]),
+        data: z.string().describe("YYYY-MM-DD"),
+        ora: z.string().nullable().describe("HH:MM se indicata"),
+        luogo: z.enum(["In sede", "Questura", "Prefettura", "Tribunale", "Telefono", "Online"]),
+      }),
+    )
+    .describe("Appuntamenti con data esplicita citati nel testo (in sede o presso uffici). Vuoto se nessuno."),
+});
+export type AttivitaEstratte = z.infer<typeof SchemaAttivitaEstratte>;
+
+export async function estraiAttivita(input: { testo: string; contesto: ContestoCliente; oggi: string; origine: "nota" | "whatsapp" }): Promise<AttivitaEstratte> {
+  return strutturato({
+    schema: SchemaAttivitaEstratte,
+    system: `Sei l'assistente organizzativo di uno studio di diritto dell'immigrazione. Dal testo ${input.origine === "nota" ? "di una nota del diario" : "di una conversazione WhatsApp"} individua:
+- le attività concrete che lo studio deve svolgere (documenti da chiedere o preparare, istanze da inviare, chiamate da fare, controlli da fare);
+- gli appuntamenti con una data esplicita (es. convocazione in Questura per le impronte, ritiro del permesso, prossimo appuntamento in sede).
+Regole: non inventare; niente attività generiche o già concluse nel testo; date relative ("tra 2 settimane", "lunedì") convertite rispetto alla data di oggi; massimo 5 attività. Se non c'è nulla da fare restituisci liste vuote.`,
+    content: `Data di oggi: ${input.oggi}\n\n${contestoInTesto({ ...input.contesto, note: input.contesto.note.slice(-5) })}\n\n<testo_da_analizzare>\n${input.testo}\n</testo_da_analizzare>`,
+    effort: "low",
+  });
+}
+
+// ---------------------------------------------------------------------
+// 7. Briefing del giorno
+// ---------------------------------------------------------------------
+export async function briefingGiornaliero(input: { utente: string; sede: string; oggi: string; dati: string }) {
+  return testo({
+    system:
+      "Sei l'assistente di uno studio di diritto dell'immigrazione. Prepari il briefing mattutino per l'operatore: in italiano, conciso, concreto, ordinato per priorità. Usa solo i dati forniti. Testo semplice con titoletti in MAIUSCOLO ed elenchi con '-'. Niente markdown.",
+    content: `Operatore: ${input.utente} – ${input.sede}\nData di oggi: ${input.oggi}\n\n${input.dati}\n\nScrivi:\nPRIORITÀ DI OGGI: le 3-5 cose più importanti (scadenze già passate, urgenze WhatsApp, permessi in scadenza a breve).\nAPPUNTAMENTI: elenco della giornata con cosa preparare per ciascuno.\nDA FARE: attività aperte rilevanti.\nWHATSAPP: chi aspetta una risposta e perché.\nSe una sezione è vuota scrivi "nulla".`,
+  });
+}
+
+// ---------------------------------------------------------------------
+// 8. Importazione: abbinamento colonne CSV → campi del gestionale
+// ---------------------------------------------------------------------
+export async function mappaColonneCsv(campi: { campo: string; label: string }[], intestazioni: string[], esempi: string[][]) {
+  const schema = z.object({
+    abbinamenti: z.array(z.object({ campo: z.string(), colonna: z.string().nullable().describe("Nome ESATTO della colonna CSV, o null se nessuna corrisponde") })),
+  });
+  const r = await strutturato({
+    schema,
+    system:
+      "Abbini le colonne di un file CSV esportato da un vecchio gestionale (TeamSystem) ai campi del nuovo gestionale di uno studio di diritto dell'immigrazione. Guarda sia i nomi delle colonne sia i valori di esempio. Ogni colonna va usata al massimo una volta. Se nessuna colonna corrisponde a un campo, usa null.",
+    content: `Campi del gestionale:\n${campi.map((c) => `- ${c.campo}: ${c.label}`).join("\n")}\n\nColonne CSV: ${JSON.stringify(intestazioni)}\n\nPrime righe di esempio:\n${esempi.map((r) => JSON.stringify(r)).join("\n")}`,
+    effort: "low",
+  });
+  const valide = new Set(intestazioni);
+  return Object.fromEntries(r.abbinamenti.filter((a) => a.colonna && valide.has(a.colonna)).map((a) => [a.campo, a.colonna!]));
+}

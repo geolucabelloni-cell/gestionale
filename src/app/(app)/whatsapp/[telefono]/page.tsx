@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formattaTelefono } from "@/lib/telefono";
 import { oreTrascorse } from "@/lib/format";
 import { ChatWhatsapp } from "@/components/chat-whatsapp";
+import { canaleConfigurato, caricaSede } from "@/lib/whatsapp-service";
 import { Risposta } from "./risposta";
 import { AssociaCliente } from "./associa-cliente";
 
@@ -35,9 +36,11 @@ export default async function ConversazionePage({ params, searchParams }: PagePr
       .order("created_at", { ascending: true })
       .limit(300),
     supabase.from("clients").select("id, nome, cognome").eq("office_id", officeId).eq("telefono", telefono).limit(1).maybeSingle(),
-    supabase.from("offices").select("nome, wa_phone_number_id").eq("id", officeId).single(),
+    supabase.from("offices").select("nome").eq("id", officeId).single(),
   ]);
 
+  if (!sede) notFound(); // la sede non è accessibile a questo utente
+  const sedeCanale = await caricaSede(officeId);
   const ultimaDaGestire = [...(messaggi ?? [])].reverse().find((m) => m.da_gestire);
   const nomeProfilo = [...(messaggi ?? [])].reverse().find((m) => m.nome_profilo)?.nome_profilo;
   const allegatiInSospeso = (messaggi ?? []).filter((m) => m.media_path).length;
@@ -88,7 +91,7 @@ export default async function ConversazionePage({ params, searchParams }: PagePr
         motivo={ultimaDaGestire?.ai_motivo ?? null}
         daGestire={!!ultimaDaGestire}
         finestraAperta={finestraAperta}
-        configurato={!!sede?.wa_phone_number_id}
+        configurato={!!sedeCanale && canaleConfigurato(sedeCanale)}
       />
     </div>
   );

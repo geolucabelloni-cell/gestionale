@@ -4,7 +4,7 @@ import { Pencil, MessageCircle, Phone, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { richiediProfilo } from "@/lib/auth";
 import { aiDisponibile } from "@/lib/ai/claude";
-import { data, giorniA, LINGUE, STATI_PRATICA } from "@/lib/format";
+import { data, dataTraGiorni, giorniA, LINGUE, STATI_PRATICA } from "@/lib/format";
 import { formattaTelefono } from "@/lib/telefono";
 import { BadgeScadenza } from "@/components/badge-scadenza";
 import { Diario } from "@/components/cliente/diario";
@@ -13,10 +13,16 @@ import { Pratiche } from "@/components/cliente/pratiche";
 import { PannelloAi } from "@/components/cliente/pannello-ai";
 import { ChatWhatsapp } from "@/components/chat-whatsapp";
 import { EliminaCliente } from "@/components/cliente/elimina-cliente";
+import { AppuntamentiCliente } from "@/components/agenda/appuntamenti-cliente";
+import { ListaAttivita } from "@/components/attivita/lista-attivita";
+import { inVista, operatoriVisibili, SELECT_APPUNTAMENTO } from "@/lib/agenda";
+import { caricaAttivita } from "@/lib/attivita";
+import { oggiRoma } from "@/lib/tempo";
 
 const SCHEDE = [
   { id: "diario", label: "Diario" },
   { id: "documenti", label: "Documenti" },
+  { id: "agenda", label: "Agenda e attività" },
   { id: "pratiche", label: "Pratiche" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "anagrafica", label: "Anagrafica" },
@@ -32,13 +38,14 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
   const { data: c } = await supabase.from("clients").select("*, offices(nome)").eq("id", id).maybeSingle();
   if (!c) notFound();
 
-  const [{ count: nNote }, { count: nDoc }, { data: praticheAperte }, { count: nWa }] = await Promise.all([
+  const [{ count: nNote }, { count: nDoc }, { data: praticheAperte }, { count: nWa }, { count: nAtt }] = await Promise.all([
     supabase.from("client_notes").select("id", { count: "exact", head: true }).eq("client_id", id),
     supabase.from("documents").select("id", { count: "exact", head: true }).eq("client_id", id),
     supabase.from("cases").select("id, tipo, stato").eq("client_id", id).not("stato", "in", "(conclusa_positiva,conclusa_negativa,archiviata)"),
     supabase.from("whatsapp_messages").select("id", { count: "exact", head: true }).eq("client_id", id).eq("da_gestire", true),
+    supabase.from("tasks").select("id", { count: "exact", head: true }).eq("client_id", id).eq("stato", "da_fare"),
   ]);
-  const conteggi: Record<string, number | null> = { diario: nNote, documenti: nDoc, pratiche: praticheAperte?.length ?? 0, whatsapp: nWa };
+  const conteggi: Record<string, number | null> = { agenda: nAtt, diario: nNote, documenti: nDoc, pratiche: praticheAperte?.length ?? 0, whatsapp: nWa };
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -135,6 +142,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
 
       {scheda === "diario" && <SchedaDiario clientId={c.id} puoEliminare={profilo.ruolo !== "operatore"} />}
       {scheda === "documenti" && <SchedaDocumenti clientId={c.id} officeId={c.office_id} />}
+      {scheda === "agenda" && <SchedaAgenda cliente={{ id: c.id, nome: c.nome, cognome: c.cognome }} />}
       {scheda === "pratiche" && <SchedaPratiche clientId={c.id} />}
       {scheda === "whatsapp" && <SchedaWhatsapp clientId={c.id} telefono={c.telefono} />}
       {scheda === "anagrafica" && <SchedaAnagrafica c={c} />}
@@ -162,6 +170,7 @@ async function SchedaDiario({ clientId, puoEliminare }: { clientId: string; puoE
     <Diario
       clientId={clientId}
       puoEliminare={puoEliminare}
+      aiAttiva={aiDisponibile()}
       note={(note ?? []).map((n) => ({ ...n, autore: n.profiles?.nome_completo ?? null }))}
     />
   );
@@ -178,6 +187,25 @@ async function SchedaDocumenti({ clientId, officeId }: { clientId: string; offic
       .order("created_at", { ascending: false }),
   ]);
   return <Archivio clientId={clientId} officeId={officeId} cartelle={cartelle ?? []} documenti={documenti ?? []} aiAttiva={aiDisponibile()} />;
+}
+
+async function SchedaAgenda({ cliente }: { cliente: { id: string; nome: string; cognome: string } }) {
+  const supabase = await createClient();
+  const [{ data: appt }, attivita, operatori] = await Promise.all([
+    supabase.from("appointments").select(SELECT_APPUNTAMENTO).eq("client_id", cliente.id).order("inizio"),
+    caricaAttivita(supabase, { clientId: cliente.id, conCompletate: true }),
+    operatoriVisibili(supabase),
+  ]);
+  const oggi = oggiRoma();
+  return (
+    <div className="space-y-8">
+      <AppuntamentiCliente cliente={cliente} appuntamenti={(appt ?? []).map(inVista)} operatori={operatori} oggi={oggi} />
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold">Attività e scadenze</h2>
+        <ListaAttivita attivita={attivita} operatori={operatori} oggi={oggi} tra7={dataTraGiorni(7)} clienteFisso={cliente} />
+      </div>
+    </div>
+  );
 }
 
 async function SchedaPratiche({ clientId }: { clientId: string }) {
