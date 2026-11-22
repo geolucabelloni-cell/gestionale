@@ -11,8 +11,8 @@ export function verificaFirma(rawBody: string, signatureHeader: string | null): 
   if (!secret || !signatureHeader?.startsWith("sha256=")) return false;
   const atteso = crypto.createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
   const ricevuto = signatureHeader.slice("sha256=".length);
-  if (ricevuto.length !== atteso.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(ricevuto, "hex"), Buffer.from(atteso, "hex"));
+  if (!/^[0-9a-f]{64}$/i.test(ricevuto)) return false;
+  return crypto.timingSafeEqual(Buffer.from(ricevuto.toLowerCase(), "hex"), Buffer.from(atteso, "hex"));
 }
 
 function token(tokenSede?: string | null) {

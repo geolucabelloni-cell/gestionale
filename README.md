@@ -95,6 +95,18 @@ node --env-file=.env.local scripts/crea-admin.mjs admin@test.it "Password123!" "
 npm run dev
 ```
 
+## Sicurezza
+
+- **Separazione tra sedi nel database** (Row Level Security su ogni tabella e sull'archivio file): una sede non può leggere, modificare o scaricare dati di un'altra, nemmeno chiamando direttamente le API.
+- **Ruoli**: l'operatore non può eliminare clienti o note, né modificare sede, modelli o utenti; il titolare non può cambiare il numero WhatsApp della sede né darsi permessi superiori.
+- **Storico non falsificabile**: le note del diario, i messaggi WhatsApp e il registro attività non si possono modificare; un documento non può essere fatto puntare a un altro file.
+- **Chiavi segrete** (service role, token WhatsApp/Callbell, chiave AI) solo sul server, mai nel browser; i token delle sedi sono in una tabella non leggibile dagli utenti.
+- **Webhook**: Meta verificato con firma HMAC, Callbell con codice segreto per sede; gli allegati si scaricano solo da indirizzi HTTPS pubblici, max 25 MB.
+- **Intestazioni HTTP** di sicurezza (HSTS, anti-clickjacking, nosniff), solo HTTPS.
+- Verificato con una simulazione di 76 tentativi di accesso non autorizzato (sconosciuto, registrazione abusiva, altra sede, operatore, utente disattivato): tutti bloccati.
+
+Impostazioni consigliate in Supabase → Authentication: registrazioni disattivate, *Leaked password protection* attiva, lunghezza minima password 10, MFA per la sede centrale.
+
 ## Costi indicativi
 
 | Voce | Costo |

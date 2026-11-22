@@ -28,11 +28,27 @@ export async function inviaTestoCallbell(opts: { token: string; a: string; testo
   return json.message?.uuid ?? null;
 }
 
+const MAX_ALLEGATO = 25 * 1024 * 1024;
+
+/** Scarica un allegato ricevuto via Callbell: solo HTTPS pubblico, max 25 MB, timeout 30 s. */
 export async function scaricaAllegatoCallbell(url: string) {
-  const res = await fetch(url);
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    throw new Error("URL allegato non valido");
+  }
+  // ammessi solo indirizzi HTTPS pubblici (niente reti interne); http://127.0.0.1 solo nei test locali
+  const testLocale = !!process.env.CALLBELL_API_URL?.startsWith("http://127.0.0.1") && u.protocol === "http:" && u.hostname === "127.0.0.1";
+  const hostPrivato = /^(localhost$|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|0\.|\[)/i.test(u.hostname);
+  if (!testLocale && (u.protocol !== "https:" || hostPrivato)) throw new Error("URL allegato non consentito");
+  const res = await fetch(u, { redirect: "error", signal: AbortSignal.timeout(30_000) });
   if (!res.ok) throw new Error(`Download allegato Callbell fallito (${res.status})`);
+  if (Number(res.headers.get("content-length") ?? 0) > MAX_ALLEGATO) throw new Error("Allegato troppo grande");
+  const buffer = Buffer.from(await res.arrayBuffer());
+  if (buffer.length > MAX_ALLEGATO) throw new Error("Allegato troppo grande");
   const mime = (res.headers.get("content-type") ?? "application/octet-stream").split(";")[0].trim();
-  return { buffer: Buffer.from(await res.arrayBuffer()), mime };
+  return { buffer, mime };
 }
 
 type Obj = Record<string, unknown>;

@@ -16,7 +16,9 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/callbell/we
   const db = createAdminClient();
   const { data: segreti } = await db.from("office_secrets").select("callbell_webhook_token").eq("office_id", sede).maybeSingle();
   const atteso = segreti?.callbell_webhook_token ?? "";
-  if (!atteso || token.length !== atteso.length || !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(atteso))) {
+  const a = Buffer.from(token);
+  const b = Buffer.from(atteso);
+  if (!atteso || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
     return new NextResponse("Non autorizzato", { status: 401 });
   }
 
