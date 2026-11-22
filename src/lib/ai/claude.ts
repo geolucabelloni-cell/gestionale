@@ -92,7 +92,7 @@ async function testo(opts: { system: string; content: string; effort?: "low" | "
 export type ContestoCliente = {
   cliente: Record<string, unknown> | null;
   note: { numero: number; data_visita: string; testo: string }[];
-  pratiche: { tipo: string; stato: string; descrizione: string | null; prossima_scadenza: string | null; riferimento_esterno: string | null }[];
+  pratiche: { tipo: string; stato: string; descrizione: string | null; prossima_scadenza: string | null; riferimento_esterno: string | null; documenti_mancanti?: string[] }[];
   documenti: { nome: string; cartella: string | null; ai_tipo_documento: string | null; created_at: string }[];
 };
 
@@ -109,7 +109,7 @@ export function contestoInTesto(c: ContestoCliente) {
   }
   righe.push("<pratiche>");
   for (const p of c.pratiche) {
-    righe.push(`- ${p.tipo} | stato: ${p.stato}${p.prossima_scadenza ? ` | prossima scadenza: ${p.prossima_scadenza}` : ""}${p.riferimento_esterno ? ` | rif: ${p.riferimento_esterno}` : ""}${p.descrizione ? ` | ${p.descrizione}` : ""}`);
+    righe.push(`- ${p.tipo} | stato: ${p.stato}${p.prossima_scadenza ? ` | prossima scadenza: ${p.prossima_scadenza}` : ""}${p.riferimento_esterno ? ` | rif: ${p.riferimento_esterno}` : ""}${p.descrizione ? ` | ${p.descrizione}` : ""}${p.documenti_mancanti?.length ? ` | documenti ancora da consegnare: ${p.documenti_mancanti.join("; ")}` : ""}`);
   }
   if (!c.pratiche.length) righe.push("(nessuna)");
   righe.push("</pratiche>");
@@ -156,7 +156,7 @@ Il tuo compito: leggere l'ultimo messaggio del cliente, il suo storico e decider
 
 PUOI rispondere in automatico (rispondi_automaticamente = true) solo a domande semplici la cui risposta è ESPLICITAMENTE presente nelle informazioni della sede o nei dati del cliente:
 - orari, indirizzo, contatti, come prendere appuntamento;
-- elenco dei documenti da portare, se indicato nelle informazioni della sede;
+- elenco dei documenti da portare, se indicato nelle informazioni della sede o tra i "documenti ancora da consegnare" della pratica del cliente;
 - stato di una pratica, solo se presente nei dati (riporta lo stato, non fare previsioni sui tempi);
 - conferma di ricezione di un documento o di un messaggio;
 - saluti e ringraziamenti.

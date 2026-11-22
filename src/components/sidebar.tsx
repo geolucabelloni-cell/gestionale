@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutDashboard, Users, MessageCircle, CalendarClock, CalendarDays, Upload, Settings, Network, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, MessageCircle, CalendarClock, CalendarDays, Upload, FileStack, Settings, Network, LogOut, Menu, X } from "lucide-react";
 
 type Props = {
   nomeStudio: string;
@@ -25,6 +25,7 @@ export function Sidebar(p: Props) {
     { href: "/scadenze", label: "Scadenze e attività", icon: CalendarClock, badge: p.attivitaScadute },
     ...(p.ruoloCodice !== "operatore"
       ? [
+          { href: "/modelli", label: "Modelli e checklist", icon: FileStack },
           { href: "/importa", label: "Importa da TeamSystem", icon: Upload },
           { href: "/impostazioni", label: "Impostazioni sede", icon: Settings },
         ]

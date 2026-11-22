@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // font e logo usati per generare i PDF lato server
+  outputFileTracingIncludes: {
+    "/*": ["./assets/**/*"],
+  },
   turbopack: {
     rules: {
       "*.css": {

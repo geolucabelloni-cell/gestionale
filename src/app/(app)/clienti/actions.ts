@@ -8,6 +8,7 @@ import { richiediProfilo } from "@/lib/auth";
 import { normalizzaTelefono } from "@/lib/telefono";
 import { caricaContestoCliente, oggiISO } from "@/lib/contesto";
 import { analizzaDocumento, BUCKET, percorsoStorage } from "@/lib/documenti";
+import { applicaChecklistPredefinita } from "@/lib/checklist";
 import {
   AiNonConfigurata,
   AiRifiuto,
@@ -212,10 +213,15 @@ export async function salvaPratica(_: Esito, f: FormData): Promise<Esito> {
     prossima_scadenza: testo(f, "prossima_scadenza"),
     riferimento_esterno: testo(f, "riferimento_esterno"),
   };
-  const { error } = id
-    ? await supabase.from("cases").update(dati).eq("id", id)
-    : await supabase.from("cases").insert({ ...dati, client_id: clientId, office_id: DA_TRIGGER });
-  if (error) return { errore: error.message };
+  if (id) {
+    const { error } = await supabase.from("cases").update(dati).eq("id", id);
+    if (error) return { errore: error.message };
+  } else {
+    const { data: nuova, error } = await supabase.from("cases").insert({ ...dati, client_id: clientId, office_id: DA_TRIGGER }).select("id").single();
+    if (error) return { errore: error.message };
+    // checklist documenti predefinita per questo tipo di pratica
+    await applicaChecklistPredefinita(supabase, nuova.id, tipo);
+  }
   revalidatePath(`/clienti/${clientId}`);
   return { ok: "Pratica salvata" };
 }
@@ -385,4 +391,48 @@ export async function aiEstraiDaDocumento(f: FormData): Promise<{ dati?: DatiDoc
   } catch (e) {
     return { errore: messaggioErroreAi(e) };
   }
+}
+
+// ---------------------------------------------------------------------
+// Checklist documenti della pratica
+// ---------------------------------------------------------------------
+export async function caricaChecklistPredefinita(caseId: string, clientId: string) {
+  await richiediProfilo();
+  const supabase = await createClient();
+  const { data: pratica } = await supabase.from("cases").select("tipo").eq("id", caseId).single();
+  if (!pratica) return { errore: "Pratica non trovata" };
+  const n = await applicaChecklistPredefinita(supabase, caseId, pratica.tipo);
+  revalidatePath(`/clienti/${clientId}`);
+  return n ? { ok: `${n} documenti aggiunti` } : { errore: `Nessuna checklist predefinita per "${pratica.tipo}". Aggiungi le voci a mano o creala in Modelli.` };
+}
+
+export async function segnaVoceChecklist(id: string, fatto: boolean, clientId: string) {
+  await richiediProfilo();
+  const supabase = await createClient();
+  await supabase.from("case_checklist").update({ fatto }).eq("id", id);
+  revalidatePath(`/clienti/${clientId}`);
+}
+
+export async function aggiungiVoceChecklist(caseId: string, voce: string, clientId: string) {
+  await richiediProfilo();
+  if (!voce.trim()) return;
+  const supabase = await createClient();
+  const { data: ultima } = await supabase.from("case_checklist").select("ordine").eq("case_id", caseId).order("ordine", { ascending: false }).limit(1).maybeSingle();
+  await supabase.from("case_checklist").insert({ case_id: caseId, office_id: DA_TRIGGER, voce: voce.trim(), ordine: (ultima?.ordine ?? 0) + 1 });
+  revalidatePath(`/clienti/${clientId}`);
+}
+
+export async function eliminaVoceChecklist(id: string, clientId: string) {
+  await richiediProfilo();
+  const supabase = await createClient();
+  await supabase.from("case_checklist").delete().eq("id", id);
+  revalidatePath(`/clienti/${clientId}`);
+}
+
+/** Collega un documento dell'archivio alla voce (e la segna come consegnata). */
+export async function collegaDocumentoVoce(id: string, documentId: string | null, clientId: string) {
+  await richiediProfilo();
+  const supabase = await createClient();
+  await supabase.from("case_checklist").update(documentId ? { document_id: documentId, fatto: true } : { document_id: null }).eq("id", id);
+  revalidatePath(`/clienti/${clientId}`);
 }

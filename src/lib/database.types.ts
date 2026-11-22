@@ -93,6 +93,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"case_checklist": {
+                  Row: {
+                    "case_id": string,"created_at": string,"document_id": string | null,"fatto": boolean,"fatto_at": string | null,"fatto_da": string | null,"id": string,"nota": string | null,"office_id": string,"ordine": number,"voce": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "case_id": string,"created_at"?: string,"document_id"?: string | null,"fatto"?: boolean,"fatto_at"?: string | null,"fatto_da"?: string | null,"id"?: string,"nota"?: string | null,"office_id": string,"ordine"?: number,"voce": string
+                  }
+                  Update: {
+                    "case_id"?: string,"created_at"?: string,"document_id"?: string | null,"fatto"?: boolean,"fatto_at"?: string | null,"fatto_da"?: string | null,"id"?: string,"nota"?: string | null,"office_id"?: string,"ordine"?: number,"voce"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "case_checklist_case_id_fkey"
+      columns: ["case_id"]
+isOneToOne: false
+      referencedRelation: "cases"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "case_checklist_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: false
+      referencedRelation: "documents"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "case_checklist_fatto_da_fkey"
+      columns: ["fatto_da"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "case_checklist_office_id_fkey"
+      columns: ["office_id"]
+isOneToOne: false
+      referencedRelation: "offices"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"cases": {
                   Row: {
                     "client_id": string,"created_at": string,"created_by": string | null,"data_apertura": string,"descrizione": string | null,"id": string,"office_id": string,"prossima_scadenza": string | null,"riferimento_esterno": string | null,"stato": Database["public"]['Enums']["stato_pratica"],"tipo": string,"updated_at": string
@@ -125,6 +163,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "cases_office_id_fkey"
+      columns: ["office_id"]
+isOneToOne: false
+      referencedRelation: "offices"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"checklist_templates": {
+                  Row: {
+                    "id": string,"office_id": string | null,"tipo_pratica": string,"updated_at": string,"voci": (string)[]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"office_id"?: string | null,"tipo_pratica": string,"updated_at"?: string,"voci"?: (string)[]
+                  }
+                  Update: {
+                    "id"?: string,"office_id"?: string | null,"tipo_pratica"?: string,"updated_at"?: string,"voci"?: (string)[]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "checklist_templates_office_id_fkey"
       columns: ["office_id"]
 isOneToOne: false
       referencedRelation: "offices"
@@ -195,6 +253,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "clients_office_id_fkey"
+      columns: ["office_id"]
+isOneToOne: false
+      referencedRelation: "offices"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"document_templates": {
+                  Row: {
+                    "attivo": boolean,"corpo": string,"created_at": string,"descrizione": string | null,"id": string,"nome": string,"office_id": string | null,"richiede_pratica": boolean,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "attivo"?: boolean,"corpo"?: string,"created_at"?: string,"descrizione"?: string | null,"id"?: string,"nome": string,"office_id"?: string | null,"richiede_pratica"?: boolean,"updated_at"?: string
+                  }
+                  Update: {
+                    "attivo"?: boolean,"corpo"?: string,"created_at"?: string,"descrizione"?: string | null,"id"?: string,"nome"?: string,"office_id"?: string | null,"richiede_pratica"?: boolean,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "document_templates_office_id_fkey"
       columns: ["office_id"]
 isOneToOne: false
       referencedRelation: "offices"
@@ -488,6 +566,9 @@ isOneToOne: false
                            },
 "is_admin_rete":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"puo_gestire_modello":
+{ Args: { "target": string }; Returns: boolean
                            },
 "show_limit":
 { Args: Record<PropertyKey, never>; Returns: number

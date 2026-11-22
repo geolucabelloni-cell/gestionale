@@ -17,6 +17,8 @@ import { AppuntamentiCliente } from "@/components/agenda/appuntamenti-cliente";
 import { ListaAttivita } from "@/components/attivita/lista-attivita";
 import { inVista, operatoriVisibili, SELECT_APPUNTAMENTO } from "@/lib/agenda";
 import { caricaAttivita } from "@/lib/attivita";
+import { caricaModelliDocumento } from "@/lib/modelli-server";
+import { PulsanteGeneraDocumento } from "@/components/cliente/genera-documento";
 import { oggiRoma } from "@/lib/tempo";
 
 const SCHEDE = [
@@ -44,6 +46,10 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
     supabase.from("cases").select("id, tipo, stato").eq("client_id", id).not("stato", "in", "(conclusa_positiva,conclusa_negativa,archiviata)"),
     supabase.from("whatsapp_messages").select("id", { count: "exact", head: true }).eq("client_id", id).eq("da_gestire", true),
     supabase.from("tasks").select("id", { count: "exact", head: true }).eq("client_id", id).eq("stato", "da_fare"),
+  ]);
+  const [modelliDoc, { data: tuttePratiche }] = await Promise.all([
+    caricaModelliDocumento(supabase, c.office_id),
+    supabase.from("cases").select("id, tipo").eq("client_id", id).order("data_apertura", { ascending: false }),
   ]);
   const conteggi: Record<string, number | null> = { agenda: nAtt, diario: nNote, documenti: nDoc, pratiche: praticheAperte?.length ?? 0, whatsapp: nWa };
 
@@ -90,6 +96,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
                 <MessageCircle size={16} /> WhatsApp
               </Link>
             )}
+            <PulsanteGeneraDocumento clientId={c.id} modelli={modelliDoc} pratiche={tuttePratiche ?? []} />
             <Link href={`/clienti/${c.id}/modifica`} className="btn-secondary">
               <Pencil size={16} /> Modifica
             </Link>
@@ -143,7 +150,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
       {scheda === "diario" && <SchedaDiario clientId={c.id} puoEliminare={profilo.ruolo !== "operatore"} />}
       {scheda === "documenti" && <SchedaDocumenti clientId={c.id} officeId={c.office_id} />}
       {scheda === "agenda" && <SchedaAgenda cliente={{ id: c.id, nome: c.nome, cognome: c.cognome }} />}
-      {scheda === "pratiche" && <SchedaPratiche clientId={c.id} />}
+      {scheda === "pratiche" && <SchedaPratiche clientId={c.id} officeId={c.office_id} />}
       {scheda === "whatsapp" && <SchedaWhatsapp clientId={c.id} telefono={c.telefono} />}
       {scheda === "anagrafica" && <SchedaAnagrafica c={c} />}
     </div>
@@ -208,10 +215,17 @@ async function SchedaAgenda({ cliente }: { cliente: { id: string; nome: string; 
   );
 }
 
-async function SchedaPratiche({ clientId }: { clientId: string }) {
+async function SchedaPratiche({ clientId, officeId }: { clientId: string; officeId: string }) {
   const supabase = await createClient();
-  const { data: pratiche } = await supabase.from("cases").select("*").eq("client_id", clientId).order("data_apertura", { ascending: false });
-  return <Pratiche clientId={clientId} pratiche={pratiche ?? []} />;
+  const [{ data: pratiche }, { data: voci }, { data: documenti }, modelli] = await Promise.all([
+    supabase.from("cases").select("*").eq("client_id", clientId).order("data_apertura", { ascending: false }),
+    supabase.from("case_checklist").select("id, case_id, voce, fatto, document_id, cases!inner(client_id)").eq("cases.client_id", clientId).order("ordine"),
+    supabase.from("documents").select("id, nome").eq("client_id", clientId).order("created_at", { ascending: false }),
+    caricaModelliDocumento(supabase, officeId),
+  ]);
+  const checklist: Record<string, { id: string; voce: string; fatto: boolean; document_id: string | null }[]> = {};
+  for (const v of voci ?? []) (checklist[v.case_id] ??= []).push({ id: v.id, voce: v.voce, fatto: v.fatto, document_id: v.document_id });
+  return <Pratiche clientId={clientId} pratiche={pratiche ?? []} checklist={checklist} documenti={documenti ?? []} modelli={modelli} />;
 }
 
 async function SchedaWhatsapp({ clientId, telefono }: { clientId: string; telefono: string | null }) {

@@ -7,6 +7,8 @@ import { eliminaPratica, salvaPratica } from "@/app/(app)/clienti/actions";
 import { data, giorniA, STATI_PRATICA, TIPI_PRATICA } from "@/lib/format";
 import { BadgeScadenza } from "@/components/badge-scadenza";
 import type { Database } from "@/lib/database.types";
+import { ChecklistPratica, type DocumentoBreve, type VoceChecklist } from "./checklist-pratica";
+import { PulsanteGeneraDocumento, type ModelloBreve } from "./genera-documento";
 
 type Pratica = Database["public"]["Tables"]["cases"]["Row"];
 
@@ -20,7 +22,21 @@ const COLORI: Record<string, string> = {
   archiviata: "bg-slate-100 text-slate-500",
 };
 
-export function Pratiche({ clientId, pratiche }: { clientId: string; pratiche: Pratica[] }) {
+export function Pratiche({
+  clientId,
+  pratiche,
+  checklist,
+  documenti,
+  modelli,
+}: {
+  clientId: string;
+  pratiche: Pratica[];
+  checklist: Record<string, VoceChecklist[]>;
+  documenti: DocumentoBreve[];
+  modelli: ModelloBreve[];
+}) {
+  const promemoria = modelli.find((m) => m.nome.toLowerCase().startsWith("promemoria documenti"));
+  const listaPratiche = pratiche.map((p) => ({ id: p.id, tipo: p.tipo }));
   const [modifica, setModifica] = useState<Pratica | "nuova" | null>(null);
   const [, avvia] = useTransition();
 
@@ -52,6 +68,12 @@ export function Pratiche({ clientId, pratiche }: { clientId: string; pratiche: P
               </div>
               {p.descrizione && <p className="mt-2 text-sm whitespace-pre-wrap text-slate-700">{p.descrizione}</p>}
             </div>
+            <PulsanteGeneraDocumento piccolo etichetta="Documento" clientId={clientId} modelli={modelli} pratiche={listaPratiche} praticaIniziale={p.id} />
+            {promemoria && (checklist[p.id] ?? []).some((v) => !v.fatto) && (
+              <a className="btn-ghost py-1 text-xs" target="_blank" href={`/api/modelli/${promemoria.id}/pdf?cliente=${clientId}&pratica=${p.id}`}>
+                Stampa documenti mancanti
+              </a>
+            )}
             <button className="btn-ghost px-2" onClick={() => setModifica(p)}>
               <Pencil size={15} />
             </button>
@@ -59,6 +81,7 @@ export function Pratiche({ clientId, pratiche }: { clientId: string; pratiche: P
               <Trash2 size={15} />
             </button>
           </div>
+          <ChecklistPratica caseId={p.id} clientId={clientId} voci={checklist[p.id] ?? []} documenti={documenti} />
         </div>
       ))}
     </div>
