@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { richiediRuolo, ETICHETTE_RUOLO } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +16,10 @@ export default async function ImpostazioniPage({ searchParams }: PageProps<"/imp
   const { data: utenti } = await supabase.from("profiles").select("id, nome_completo, email, ruolo, attivo").eq("office_id", officeId).order("nome_completo");
   const { data: segreto } = await createAdminClient().from("office_secrets").select("wa_access_token, callbell_api_token, callbell_webhook_token").eq("office_id", officeId).maybeSingle();
 
-  const dominio = process.env.NEXT_PUBLIC_APP_URL ?? "https://<dominio-del-gestionale>";
+  // indirizzo pubblico: dalla configurazione, altrimenti ricavato dalla richiesta
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const dominio = process.env.NEXT_PUBLIC_APP_URL ?? (host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}` : "https://<dominio-del-gestionale>");
   const webhookUrl = `${dominio}/api/whatsapp/webhook`;
   const webhookCallbell = segreto?.callbell_webhook_token ? `${dominio}/api/callbell/webhook/${officeId}?token=${segreto.callbell_webhook_token}` : null;
 
