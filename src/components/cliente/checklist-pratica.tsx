@@ -57,7 +57,7 @@ export function ChecklistPratica({ caseId, clientId, voci, documenti }: { caseId
             <button
               onClick={() => avvia(() => segnaVoceChecklist(v.id, !v.fatto, clientId))}
               className="flex min-w-0 flex-1 items-center gap-2 text-left"
-              aria-label={v.fatto ? "Segna come mancante" : "Segna come consegnato"}
+              aria-label={`${v.voce}: ${v.fatto ? "consegnato (clic per segnare mancante)" : "mancante (clic per segnare consegnato)"}`}
             >
               {v.fatto ? <CheckCircle2 size={17} className="shrink-0 text-green-600" /> : <Circle size={17} className="shrink-0 text-slate-300" />}
               <span className={v.fatto ? "text-slate-500 line-through decoration-slate-300" : ""}>{v.voce}</span>
@@ -96,6 +96,7 @@ export function ChecklistPratica({ caseId, clientId, voci, documenti }: { caseId
       </ul>
 
       <form
+        method="post"
         className="mt-2 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();

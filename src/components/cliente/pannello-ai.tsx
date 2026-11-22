@@ -31,6 +31,7 @@ export function PannelloAi({ clientId, attiva }: { clientId: string; attiva: boo
         </button>
       </div>
       <form
+        method="post"
         className="mt-3 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();

@@ -1,12 +1,12 @@
 "use client";
+import Link from "next/link";
 import { useActionState } from "react";
-import { inviaSenzaReset } from "@/lib/form";
 import { accedi } from "./actions";
 
 export function LoginForm() {
   const [stato, azione, inCorso] = useActionState(accedi, null);
   return (
-    <form onSubmit={inviaSenzaReset(azione)} className="space-y-4">
+    <form action={azione} className="space-y-4">
       <div>
         <label className="label" htmlFor="email">Email</label>
         <input id="email" name="email" type="email" required autoComplete="email" className="input" />
@@ -19,6 +19,9 @@ export function LoginForm() {
       <button className="btn-primary w-full" disabled={inCorso}>
         {inCorso ? "Accesso…" : "Accedi"}
       </button>
+      <Link href="/password-dimenticata" className="block text-center text-sm text-brand-700 hover:underline">
+        Password dimenticata?
+      </Link>
     </form>
   );
 }

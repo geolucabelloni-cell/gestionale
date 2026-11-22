@@ -95,7 +95,7 @@ function FormPratica({ clientId, pratica, onChiudi }: { clientId: string; pratic
     return r;
   }, null);
   return (
-    <form onSubmit={inviaSenzaReset(azione)} className="card grid gap-3 border-brand-200 p-4 sm:grid-cols-2">
+    <form method="post" onSubmit={inviaSenzaReset(azione)} className="card grid gap-3 border-brand-200 p-4 sm:grid-cols-2">
       <input type="hidden" name="client_id" value={clientId} />
       {pratica && <input type="hidden" name="id" value={pratica.id} />}
       <div>

@@ -21,6 +21,7 @@ export function AssociaCliente({ officeId, telefono }: { officeId: string; telef
   return (
     <div className="w-full space-y-2 rounded-lg border border-slate-200 p-3">
       <form
+        method="post"
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();

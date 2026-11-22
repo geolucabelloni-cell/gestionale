@@ -40,3 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+!tests/.env.test
+
+# risultati dei test
+/test-results/
+/playwright-report/

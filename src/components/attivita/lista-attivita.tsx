@@ -70,7 +70,7 @@ export function ListaAttivita({
           <Plus size={16} /> Nuova attività / scadenza
         </button>
       ) : (
-        <form ref={formRef} onSubmit={inviaSenzaReset(azione)} className="card grid gap-3 p-4 sm:grid-cols-6">
+        <form ref={formRef} method="post" onSubmit={inviaSenzaReset(azione)} className="card grid gap-3 p-4 sm:grid-cols-6">
           <div className="sm:col-span-6">
             <input name="titolo" required autoFocus placeholder="Cosa c'è da fare? es. Chiamare per appuntamento in Questura" className="input" />
           </div>

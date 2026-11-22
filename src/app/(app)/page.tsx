@@ -11,7 +11,8 @@ import { aggiungiGiorni, partiRoma, romaToISO } from "@/lib/tempo";
 import { caricaAttivita } from "@/lib/attivita";
 import { CalendarDays, ListTodo, MapPin } from "lucide-react";
 
-export default async function Dashboard() {
+export default async function Dashboard({ searchParams }: PageProps<"/">) {
+  const sp = await searchParams;
   const profilo = await richiediProfilo();
   const supabase = await createClient();
   const oggi = oggiISO();
@@ -55,6 +56,7 @@ export default async function Dashboard() {
         <p className="text-sm text-slate-500">{profilo.ruolo === "admin_rete" ? "Panoramica di tutta la rete" : profilo.sede_nome}</p>
       </div>
 
+      {sp.password === "aggiornata" && <p className="rounded-lg bg-green-50 px-4 py-2 text-sm text-green-800">Password aggiornata.</p>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi href="/clienti" icon={Users} label="Clienti in archivio" valore={clienti.count ?? 0} />
         <Kpi href="/agenda" icon={CalendarDays} label="Appuntamenti oggi" valore={apptOggi.data?.length ?? 0} />

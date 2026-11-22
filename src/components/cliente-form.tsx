@@ -54,7 +54,7 @@ export function ClienteForm({ cliente, sedi, aiAttiva }: { cliente?: Cliente; se
 
   const c = cliente ?? {};
   return (
-    <form ref={formRef} onSubmit={inviaSenzaReset(azione)} className="space-y-6">
+    <form ref={formRef} method="post" onSubmit={inviaSenzaReset(azione)} className="space-y-6">
       {c.id && <input type="hidden" name="id" value={c.id} />}
 
       {aiAttiva && (

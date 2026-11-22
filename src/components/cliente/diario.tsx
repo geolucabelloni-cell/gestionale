@@ -54,7 +54,7 @@ export function Diario({ clientId, note, puoEliminare, aiAttiva }: { clientId: s
 
   return (
     <div className="space-y-6">
-      <form ref={formRef} onSubmit={inviaSenzaReset(azione)} className="card space-y-3 p-4">
+      <form ref={formRef} method="post" onSubmit={inviaSenzaReset(azione)} className="card space-y-3 p-4">
         <input type="hidden" name="client_id" value={clientId} />
         {rettifica && <input type="hidden" name="rettifica_di" value={rettifica.id} />}
         <div className="flex flex-wrap items-center justify-between gap-2">

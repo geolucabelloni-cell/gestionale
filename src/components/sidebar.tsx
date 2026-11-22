@@ -74,8 +74,10 @@ export function Sidebar(p: Props) {
           ))}
         </nav>
         <div className="border-t border-slate-200 p-4">
-          <div className="truncate text-sm font-medium">{p.utente}</div>
-          <div className="mb-3 text-xs text-slate-500">{p.ruolo}</div>
+          <Link href="/profilo" onClick={() => setAperto(false)} className="block rounded-md hover:bg-slate-50" title="Il mio profilo e password">
+            <div className="truncate text-sm font-medium">{p.utente}</div>
+            <div className="mb-3 text-xs text-slate-500">{p.ruolo} · profilo</div>
+          </Link>
           <form action="/auth/esci" method="post">
             <button className="btn-ghost w-full justify-start px-0 text-slate-500">
               <LogOut size={16} /> Esci

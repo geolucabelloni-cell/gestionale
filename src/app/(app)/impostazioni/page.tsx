@@ -32,6 +32,25 @@ export default async function ImpostazioniPage({ searchParams }: PageProps<"/imp
 
       <FormSede sede={sede} haTokenCallbell={!!segreto?.callbell_api_token} webhookCallbell={webhookCallbell} haToken={!!segreto?.wa_access_token} haTokenGlobale={!!process.env.WHATSAPP_ACCESS_TOKEN} aiAttiva={aiDisponibile()} webhookUrl={webhookUrl} />
 
+      <section className="card space-y-3 p-5">
+        <h2 className="font-semibold">Backup dei dati</h2>
+        <p className="text-sm text-slate-600">
+          Scarica una copia di tutti i dati (clienti, diario, pratiche, agenda, attività, WhatsApp) in un file ZIP che si apre con Excel. I file dei documenti non sono inclusi.
+          Consigliato una volta a settimana, da conservare su un disco o cloud protetto.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <a href={`/api/backup?sede=${officeId}`} className="btn-primary">
+            Scarica backup di questa sede
+          </a>
+          {p.ruolo === "admin_rete" && (
+            <a href="/api/backup" className="btn-secondary">
+              Scarica backup di tutta la rete
+            </a>
+          )}
+        </div>
+        <p className="text-xs text-amber-700">Il file contiene dati personali dei clienti: non inviarlo per email e non salvarlo su computer condivisi.</p>
+      </section>
+
       <section className="card p-5">
         <h2 className="mb-4 font-semibold">Utenti della sede</h2>
         <div className="mb-4 divide-y divide-slate-100 rounded-lg border border-slate-200">

@@ -107,6 +107,18 @@ npm run dev
 
 Impostazioni consigliate in Supabase → Authentication: registrazioni disattivate, *Leaked password protection* attiva, lunghezza minima password 10, MFA per la sede centrale.
 
+## Test automatici
+
+Ad ogni modifica pubblicata su GitHub partono da soli (scheda **Actions** del repository) tre gruppi di prove, su un database temporaneo e con AI, WhatsApp e Callbell simulati (nessun dato reale, nessun costo):
+
+| Comando | Cosa verifica |
+|---|---|
+| `npm run test:unit` | date e fusi orari, importazione CSV, modelli e PDF, password, firme dei webhook, regole sugli allegati |
+| `npm run test:sicurezza` | 77 tentativi di accesso non autorizzato (sconosciuto, registrazione abusiva, altra sede, operatore, utente disattivato): devono essere tutti bloccati |
+| `npm run test:e2e` | 16 percorsi completi nel browser: accesso, clienti, diario, archivio, pratiche e checklist, PDF, WhatsApp e Callbell, agenda, attività, importazione TeamSystem, profilo e password, backup |
+
+In locale servono Docker e `npx supabase start`; poi `npm test`. I test rifiutano di partire se il database non è quello locale.
+
 ## Costi indicativi
 
 | Voce | Costo |

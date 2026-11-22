@@ -1,0 +1,53 @@
+name: Test
+
+# Ad ogni modifica pubblicata su GitHub: controlli di base, sicurezza del database e prove nel browser.
+# Usa solo un database locale temporaneo e servizi esterni simulati: nessun dato reale, nessun costo AI.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installa le dipendenze
+        run: npm ci
+
+      - name: Controllo del codice
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+          npm run lint
+
+      - name: Controlli di base
+        run: npm run test:unit
+
+      - name: Avvia Supabase locale
+        run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,realtime,supavisor,postgres-meta
+
+      - name: Sicurezza del database (tentativi di accesso non autorizzato)
+        run: npm run test:sicurezza
+
+      - name: Installa il browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Prove complete nel browser
+        run: npm run test:e2e
+
+      - name: Rapporto delle prove (in caso di errore)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapporto-prove
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

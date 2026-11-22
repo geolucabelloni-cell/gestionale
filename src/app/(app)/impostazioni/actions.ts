@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { richiediProfilo, type Profilo } from "@/lib/auth";
+import { controllaPassword } from "@/lib/password";
 
 type Esito = { errore?: string; ok?: string } | null;
 const t = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
@@ -59,7 +60,8 @@ export async function creaUtente(_: Esito, f: FormData): Promise<Esito> {
   if (p.ruolo !== "admin_rete" && ruolo !== "operatore") return { errore: "Il titolare può creare solo operatori" };
   const email = t(f, "email").toLowerCase();
   const password = t(f, "password");
-  if (password.length < 8) return { errore: "La password deve avere almeno 8 caratteri" };
+  const errPw = controllaPassword(password);
+  if (errPw) return { errore: errPw };
 
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
@@ -88,7 +90,8 @@ export async function impostaAttivo(userId: string, attivo: boolean) {
 
 export async function reimpostaPassword(userId: string, password: string) {
   const p = await richiediProfilo();
-  if (password.length < 8) return { errore: "Almeno 8 caratteri" };
+  const errPw = controllaPassword(password);
+  if (errPw) return { errore: errPw };
   const admin = createAdminClient();
   const { data: u } = await admin.from("profiles").select("office_id, ruolo").eq("id", userId).single();
   if (!u || (userId !== p.id && (!puoGestireSede(p, u.office_id ?? "") || (p.ruolo !== "admin_rete" && u.ruolo !== "operatore")))) return { errore: "Non autorizzato" };

@@ -37,7 +37,7 @@ export function FormSede({
   const [stato, azione, salvataggio] = useActionState(salvaSede, null);
   const [provider, setProvider] = useState(sede.wa_provider);
   return (
-    <form onSubmit={inviaSenzaReset(azione)} className="space-y-6">
+    <form method="post" onSubmit={inviaSenzaReset(azione)} className="space-y-6">
       <input type="hidden" name="id" value={sede.id} />
       <section className="card grid gap-4 p-5 sm:grid-cols-2">
         <h2 className="font-semibold sm:col-span-2">Dati della sede</h2>
@@ -158,12 +158,12 @@ export function FormSede({
 export function FormUtente({ officeId, ruoli }: { officeId: string; ruoli: string[] }) {
   const [stato, azione, salvataggio] = useActionState(creaUtente, null);
   return (
-    <form onSubmit={inviaSenzaReset(azione)} className="grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
+    <form method="post" onSubmit={inviaSenzaReset(azione)} className="grid gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
       <h3 className="text-sm font-semibold sm:col-span-2">Aggiungi utente</h3>
       <input type="hidden" name="office_id" value={officeId} />
       <input name="nome_completo" required placeholder="Nome e cognome" className="input" />
       <input name="email" type="email" required placeholder="Email" className="input" />
-      <input name="password" type="text" required minLength={8} placeholder="Password iniziale (min. 8 caratteri)" className="input" autoComplete="off" />
+      <input name="password" type="text" required minLength={10} placeholder="Password iniziale (min. 10 caratteri, lettere e numeri)" className="input" autoComplete="off" />
       <select name="ruolo" className="input">
         {ruoli.map((r) => (
           <option key={r} value={r}>
@@ -190,7 +190,7 @@ export function AzioniUtente({ userId, attivo }: { userId: string; attivo: boole
         className="btn-ghost text-xs"
         disabled={inCorso}
         onClick={() => {
-          const pw = prompt("Nuova password (min. 8 caratteri)");
+          const pw = prompt("Nuova password (min. 10 caratteri, lettere e numeri)");
           if (pw) avvia(async () => alert((await reimpostaPassword(userId, pw)).errore ?? "Password aggiornata"));
         }}
       >
